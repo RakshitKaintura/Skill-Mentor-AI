@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-multipart
+google-genai
+langgraph
+langchain-core
+pydantic
+pydantic-settings
+supabase
+python-dotenv
+pymupdf
+tiktoken
+httpx
+tenacity
+pytest
+pytest-asyncio

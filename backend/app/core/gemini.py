@@ -1,0 +1,108 @@
+from functools import lru_cache
+
+from google import genai
+from google.genai import types
+
+from app.core.config import get_settings
+
+
+def get_ai_provider() -> str:
+    """Return the active AI provider name."""
+    return "gemini"
+
+
+@lru_cache
+def get_ai_client():
+    """Returns a singleton Gemini client."""
+    settings = get_settings()
+    return genai.Client(api_key=settings.gemini_api_key)
+
+
+def get_mentor_model_config(system_instruction: str):
+    """Returns a standard config for the Skill Mentor agent."""
+    return types.GenerateContentConfig(
+        system_instruction=system_instruction,
+        temperature=0.7,
+        top_p=0.95,
+        candidate_count=1,
+        max_output_tokens=8192,
+        thinking_config=types.ThinkingConfig(include_thoughts=True)
+    )
+
+
+async def generate_mentor_response(prompt: str, role_description: str) -> str:
+    """Generates a response using Gemini."""
+    settings = get_settings()
+    model_name = settings.gemini_model
+    client = get_ai_client()
+    config = get_mentor_model_config(role_description)
+    response = await client.aio.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=config,
+    )
+    return response.text
+
+
+async def check_model_health() -> bool:
+    """Performs a lightweight model call to verify availability."""
+    settings = get_settings()
+    model_name = settings.gemini_model
+    try:
+        client = get_ai_client()
+        response = await client.aio.models.generate_content(model=model_name, contents="ping")
+        return bool(response.text)
+    except Exception:
+        return False
+
+
+async def validate_gemini_startup() -> None:
+    """Fail fast on invalid Gemini configuration so startup errors are explicit."""
+    settings = get_settings()
+
+    if not settings.gemini_api_key:
+        raise RuntimeError(
+            "Missing GEMINI_API_KEY. Add a valid key to backend/.env and restart the backend."
+        )
+
+    try:
+        client = get_ai_client()
+        response = await client.aio.models.generate_content(
+            model=settings.gemini_model,
+            contents="startup validation ping",
+            config=types.GenerateContentConfig(max_output_tokens=8, temperature=0.0),
+        )
+        if not getattr(response, "text", None):
+            raise RuntimeError("Gemini startup validation returned an empty response.")
+    except Exception as exc:
+        message = str(exc)
+        if "API key was reported as leaked" in message:
+            raise RuntimeError(
+                "Gemini startup validation failed: this API key was reported as leaked and disabled. "
+                "Create a new key in Google AI Studio, update GEMINI_API_KEY in backend/.env, and restart the backend."
+            ) from exc
+        if "PERMISSION_DENIED" in message or "403" in message:
+            raise RuntimeError(
+                "Gemini startup validation failed with PERMISSION_DENIED/403. "
+                "Verify GEMINI_API_KEY and model access, then restart the backend."
+            ) from exc
+        if "UNAUTHENTICATED" in message or "401" in message:
+            raise RuntimeError(
+                "Gemini startup validation failed with UNAUTHENTICATED/401. "
+                "GEMINI_API_KEY is invalid or expired. Replace it in backend/.env and restart."
+            ) from exc
+        raise RuntimeError(f"Gemini startup validation failed: {message}") from exc
+
+
+async def embed_content(text: str, is_query: bool = False) -> list[float]:
+    """Creates embeddings using Gemini."""
+    settings = get_settings()
+    client = get_ai_client()
+    task_type = "retrieval_query" if is_query else "retrieval_document"
+    result = await client.aio.models.embed_content(
+        model=settings.gemini_embed_model,
+        contents=text,
+        config=types.EmbedContentConfig(task_type=task_type),
+    )
+
+    return result.embeddings[0].values

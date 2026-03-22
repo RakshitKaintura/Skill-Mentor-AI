@@ -1,0 +1,20 @@
+# Secrets
+backend/.env
+backend/.env.*
+frontend/.env.local
+frontend/.env.*.local
+
+# Python backend
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+
+# Node/Next frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS/editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
