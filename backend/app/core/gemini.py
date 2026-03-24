@@ -18,6 +18,11 @@ def get_ai_client():
     return genai.Client(api_key=settings.gemini_api_key)
 
 
+def get_gemini_client():
+    """Backward-compatible alias for legacy imports."""
+    return get_ai_client()
+
+
 def get_mentor_model_config(system_instruction: str):
     """Returns a standard config for the Skill Mentor agent."""
     return types.GenerateContentConfig(
@@ -99,10 +104,23 @@ async def embed_content(text: str, is_query: bool = False) -> list[float]:
     settings = get_settings()
     client = get_ai_client()
     task_type = "retrieval_query" if is_query else "retrieval_document"
-    result = await client.aio.models.embed_content(
-        model=settings.gemini_embed_model,
-        contents=text,
-        config=types.EmbedContentConfig(task_type=task_type),
-    )
+    models_to_try = [settings.gemini_embed_model, "gemini-embedding-001"]
+    last_error: Exception | None = None
 
-    return result.embeddings[0].values
+    for model_name in models_to_try:
+        try:
+            result = await client.aio.models.embed_content(
+                model=model_name,
+                contents=text,
+                config=types.EmbedContentConfig(task_type=task_type),
+            )
+            return result.embeddings[0].values
+        except Exception as exc:
+            last_error = exc
+            message = str(exc)
+            # Retry with fallback model only when the model is unsupported/not found.
+            if "NOT_FOUND" in message or "not found" in message or "not supported" in message:
+                continue
+            raise
+
+    raise RuntimeError(f"Embedding generation failed: {last_error}")

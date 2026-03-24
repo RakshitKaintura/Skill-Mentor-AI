@@ -15,9 +15,9 @@ async def check_gemini() -> bool:
 async def check_supabase() -> bool:
     """Verifies Supabase connectivity."""
     try:
-        supabase = await get_supabase()
+        supabase = get_supabase()
         # Querying 'profiles' as it's a foundational table
-        await supabase.table("profiles").select("id").limit(1).execute()
+        supabase.table("profiles").select("id").limit(1).execute()
         return True
     except Exception:
         return False

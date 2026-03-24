@@ -118,7 +118,7 @@ def _normalize_roadmap_payload(raw: dict) -> dict:
 # ── Agent Logic ────────────────────────────────────────────
 @retry(stop=stop_after_attempt(4), wait=wait_exponential(min=1, max=5))
 async def generate_roadmap(req: GenerateRoadmapRequest) -> dict:
-    supabase = await get_supabase()
+    supabase = get_supabase()
     
     # Identify context for the prompt
     goal_context = GOAL_MAP.get(req.goal, "general mastery")
@@ -165,7 +165,7 @@ async def generate_roadmap(req: GenerateRoadmapRequest) -> dict:
         "job_readiness_checklist": roadmap.job_readiness_checklist,
     }
 
-    db_result = await supabase.table("roadmaps").insert(record).execute()
+    db_result = supabase.table("roadmaps").insert(record).execute()
     
     if not db_result.data:
         raise Exception("Failed to insert roadmap into database.")
@@ -173,7 +173,7 @@ async def generate_roadmap(req: GenerateRoadmapRequest) -> dict:
     roadmap_id = db_result.data[0]["id"]
 
     # 4. Initialize Progress Metrics
-    await supabase.table("user_progress").upsert({
+    supabase.table("user_progress").upsert({
         "user_id": req.user_id,
         "xp_points": 0,
         "streak_days": 1,

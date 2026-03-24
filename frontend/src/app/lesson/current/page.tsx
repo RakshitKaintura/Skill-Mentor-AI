@@ -1,45 +1,73 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
+import { LessonViewer } from './LessonViewer'
 
+/**
+ * Server Component: CurrentLessonPage
+ * Orchestrates data fetching for the active lesson session.
+ * Ensures the user is authenticated, onboarded, and has an active roadmap.
+ */
 export default async function CurrentLessonPage() {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  // 1. Authenticate User
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+  // 2. Verify Onboarding Status & Fetch Profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, onboarding_completed')
+    .eq('id', user.id)
+    .single()
 
+  if (!profile?.onboarding_completed) {
+    redirect('/onboarding')
+  }
+
+  // 3. Retrieve Latest Active Roadmap
   const { data: roadmap } = await supabase
     .from('roadmaps')
-    .select('current_topic, current_phase, current_week')
+    .select('*')
     .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (!roadmap) {
+    redirect('/onboarding')
+  }
+
+  // 4. Check for an Existing Incomplete Lesson for this Topic
+  // This prevents re-generating (and wasting API tokens) if the user refreshes
+  const { data: existingLesson } = await supabase
+    .from('lessons')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('topic', roadmap.current_topic)
+    .eq('completed', false)
     .order('created_at', { ascending: false })
     .limit(1)
     .single()
 
   return (
     <div className="min-h-screen bg-brand-bg">
-      <DashboardNavbar userName={profile?.full_name ?? ''} />
-      <main className="max-w-3xl mx-auto px-5 py-10">
-        <h1 className="font-display font-black text-3xl text-brand-text tracking-tight">Current Lesson</h1>
-        <div className="mt-6 glass-card p-6">
-          <p className="text-xs uppercase tracking-wider text-brand-muted">Now Learning</p>
-          <h2 className="mt-2 text-xl font-display font-bold text-brand-text">{roadmap?.current_topic || 'Introduction'}</h2>
-          <p className="text-sm text-brand-muted mt-2">
-            {roadmap?.current_phase || 'Phase 1'} · Week {roadmap?.current_week || 1}
-          </p>
-          <p className="text-sm text-brand-muted mt-5">
-            Lesson content generation will be connected here in Week 2. For now, this route prevents 404 and keeps navigation working.
-          </p>
-          <div className="mt-6">
-            <Link href="/dashboard" className="text-xs text-brand-blue hover:underline">← Back to Dashboard</Link>
-          </div>
-        </div>
+      <main className="max-w-5xl mx-auto px-5 py-8">
+        {/* LessonViewer is a Client Component that handles:
+            - Calling the /v1/lesson/generate endpoint
+            - Rendering the 6-step lesson content
+            - Handling PDF generation and Doubt Solving
+        */}
+        <LessonViewer
+          roadmapId={roadmap.id}
+          topic={roadmap.current_topic ?? roadmap.skill}
+          skill={roadmap.skill}
+          level={roadmap.level}
+          phaseName={roadmap.current_phase ?? 'Foundations'}
+          weekNumber={roadmap.current_week ?? 1}
+          existingLessonId={existingLesson?.id ?? null}
+          userName={profile.full_name ?? 'Learner'}
+        />
       </main>
     </div>
   )

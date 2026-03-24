@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Mic, Brain, Code2, Trophy, Globe, FileText, Zap } from 'lucide-react'
+import { ArrowRight, Mic, Brain, Code2, Globe, FileText, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function HomePage() {
@@ -32,7 +32,7 @@ export default function HomePage() {
         <p className="mt-8 max-w-lg text-sm leading-relaxed animate-fade-up text-brand-muted">
           Your personal AI teacher that builds a custom roadmap, teaches with real-time voice, 
           solves doubts 24/7, and learns from <em className="text-brand-text">your own textbooks</em> — 
-          powered by Gemini 3.1 Flash.
+          powered by Gemini 3.1 Flash Lite Preview.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-3 animate-fade-up">
@@ -88,7 +88,7 @@ export default function HomePage() {
             { Icon: Globe, color: 'text-brand-green', bg: 'bg-brand-green/10', border: 'border-brand-green/20', title: 'Always Up-to-Date', desc: 'Official docs + live web search means every lesson reflects 2026 best practices automatically.' },
           ].map(({ Icon, color, bg, border, title, desc }) => (
             <div key={title} className="glass-card p-6 flex gap-4 hover:border-brand-muted/50 transition-colors">
-              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0 border", bg, border)}>
+              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center border", bg, border)}>
                 <Icon size={18} className={color} />
               </div>
               <div>
@@ -121,7 +121,7 @@ export default function HomePage() {
       <footer className="border-t border-brand-border px-6 py-10 text-center">
         <div className="font-display font-black text-xl gradient-text mb-2">SkillMentor AI</div>
         <p className="text-[10px] tracking-widest uppercase text-brand-muted font-bold">
-          Built with Gemini 3.1 Flash · Supabase · Next.js 16
+          Built with Gemini 3.1 Flash Lite Preview · Supabase · Next.js 16
         </p>
       </footer>
     </main>

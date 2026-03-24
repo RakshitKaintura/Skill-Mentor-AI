@@ -41,7 +41,7 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
       <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
         
         {/* Logo */}
-        <Link href="/dashboard" className="font-display font-black text-lg gradient-text flex-shrink-0">
+        <Link href="/dashboard" className="font-display font-black text-lg gradient-text">
           SkillMentor AI
         </Link>
 
@@ -88,7 +88,7 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
             </button>
             
             {/* Popover Menu */}
-            <div className="absolute right-0 top-10 w-48 rounded-sm border border-brand-border bg-brand-surface shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200">
+            <div className="absolute right-0 top-8 w-48 rounded-sm border border-brand-border bg-brand-surface shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto transition-all duration-200">
               <div className="px-4 py-3 border-b border-brand-border">
                 <p className="text-xs font-bold text-brand-text truncate">{userName}</p>
                 <p className="text-[10px] text-brand-muted uppercase tracking-wider">Student</p>

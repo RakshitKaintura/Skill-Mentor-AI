@@ -14,3 +14,5 @@ httpx
 tenacity
 pytest
 pytest-asyncio
+reportlab
+docling

@@ -35,10 +35,10 @@ async def generate_roadmap_endpoint(req: GenerateRoadmapRequest):
 @router.get("/{user_id}", response_model=Dict[str, Any])
 async def get_roadmap(user_id: str):
     """Retrieves the latest active roadmap for a specific student."""
-    supabase = await get_supabase()
+    supabase = get_supabase()
     
     # Corrected: 'desc' is a boolean in the Supabase-py order() method
-    result = await (
+    result = (
         supabase.table("roadmaps")
         .select("*")
         .eq("user_id", user_id)
@@ -55,10 +55,10 @@ async def get_roadmap(user_id: str):
 @router.patch("/{roadmap_id}/advance")
 async def advance_roadmap_progress(roadmap_id: str, user_id: str):
     """Updates student progress by advancing the current week and phase."""
-    supabase = await get_supabase()
+    supabase = get_supabase()
 
     # Fetch current state with aliases for compatibility
-    response = await (
+    response = (
         supabase.table("roadmaps")
         .select("current_week, total_duration, total_weeks, phases, skill")
         .eq("id", roadmap_id)
@@ -92,7 +92,7 @@ async def advance_roadmap_progress(roadmap_id: str, user_id: str):
     active_topic = active_phase["topics"][0] if active_phase.get("topics") else data["skill"]
 
     # Atomic Update
-    await (
+    (
         supabase.table("roadmaps")
         .update({
             "current_week": next_week,
@@ -105,7 +105,7 @@ async def advance_roadmap_progress(roadmap_id: str, user_id: str):
 
     # Reward XP for progress via Supabase RPC (Function must exist in SQL)
     try:
-        await supabase.rpc("increment_xp", {"p_user_id": user_id, "p_amount": 50}).execute()
+        supabase.rpc("increment_xp", {"p_user_id": user_id, "p_amount": 50}).execute()
     except Exception:
         # If RPC isn't set up yet, we don't want to crash the whole progress update
         pass

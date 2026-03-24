@@ -58,21 +58,24 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // 4. Secure Session Check
-  const { data: { session } } = await supabase.auth.getSession()
+  // 4. Secure auth check
+  // getUser validates the JWT with Supabase Auth and avoids stale local-session loops.
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  const isAuthenticated = !!user && !userError
 
   // 5. App Route Protection
   const protectedPaths = ['/dashboard', '/onboarding', '/roadmap', '/lesson']
   const isProtected = protectedPaths.some(p => pathname.startsWith(p))
 
-  if (isProtected && !session) {
+  if (isProtected && !isAuthenticated) {
     const loginUrl = new URL('/auth/login', request.url)
     // Optional: loginUrl.searchParams.set('redirectedFrom', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   // 6. Prevent logged-in users from hitting Auth pages (Register/Login)
-  if (pathname.startsWith('/auth') && session) {
+  const isAuthPage = pathname === '/auth/login' || pathname === '/auth/register' || pathname === '/auth/forgot-password'
+  if (isAuthPage && isAuthenticated) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

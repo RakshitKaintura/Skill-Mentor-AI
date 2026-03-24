@@ -20,7 +20,7 @@ export function useAuth() {
       const { data, error } = await supabase.auth.getUser()
       if (error) throw error
       setUser(data.user)
-    } catch (err) {
+    } catch {
       setUser(null)
     } finally {
       setLoading(false)

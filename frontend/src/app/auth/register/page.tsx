@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,15 @@ export default function RegisterPage() {
   const [loading, setLoading]     = useState(false)
   const [errors, setErrors]       = useState<Record<string, string>>({})
   const [emailSent, setEmailSent] = useState(false)
+  const [cooldownSeconds, setCooldownSeconds] = useState(0)
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return
+    const timer = setInterval(() => {
+      setCooldownSeconds(s => (s > 0 ? s - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cooldownSeconds])
 
   const set = (key: string, val: string) => {
     setForm(f => ({ ...f, [key]: val }))
@@ -47,6 +56,10 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (cooldownSeconds > 0) {
+      toast.warning(`Please wait ${cooldownSeconds}s before trying again.`)
+      return
+    }
     if (!validate()) return
     setLoading(true)
     try {
@@ -74,6 +87,14 @@ export default function RegisterPage() {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       if (msg.includes('already registered')) {
         toast.error('An account with this email already exists.')
+      } else if (msg.includes('security purposes') || msg.includes('after') && msg.includes('seconds')) {
+        const match = msg.match(/after\s+(\d+)\s+seconds/i)
+        const wait = Number(match?.[1] ?? 60)
+        setCooldownSeconds(Number.isFinite(wait) ? wait : 60)
+        toast.warning(`Too many attempts. Try again in ${Number.isFinite(wait) ? wait : 60}s.`)
+      } else if (msg.toLowerCase().includes('rate limit')) {
+        setCooldownSeconds(60)
+        toast.warning('Email rate limit exceeded. Please wait about 60s before trying again.')
       } else if (msg.includes('Failed to fetch')) {
         toast.error('Unable to reach Supabase. Verify .env.local values and network connectivity.')
       } else {
@@ -173,12 +194,14 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || cooldownSeconds > 0}
               className="mt-2 flex items-center justify-center gap-2 px-6 py-3.5 rounded-sm font-display font-bold text-sm disabled:opacity-50"
               style={{ background: '#4FFFA0', color: '#080B14' }}>
               {loading
                 ? <><Loader2 size={15} className="animate-spin" />Creating account…</>
-                : <>Create Account <ArrowRight size={15} /></>
+                : cooldownSeconds > 0
+                  ? <>Wait {cooldownSeconds}s <Loader2 size={15} className="animate-spin" /></>
+                  : <>Create Account <ArrowRight size={15} /></>
               }
             </button>
           </form>

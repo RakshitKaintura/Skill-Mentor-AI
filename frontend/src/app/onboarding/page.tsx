@@ -1,7 +1,6 @@
 'use client'
 
-import { useState ,useEffect} from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { ArrowRight, ArrowLeft, CheckCircle, Loader2, Upload } from 'lucide-react'
@@ -42,20 +41,12 @@ const TIME_OPTIONS = [
 const STEPS: Step[] = ['skill','level','goal','time','upload']
 
 export default function OnboardingPage() {
-  const router   = useRouter()
   const supabase = createClient()
   const toast    = useToast()
 
-  // ── Hydration Guard ────────────────────────────────────────
-  // Crucial for Next.js 16 to prevent the raw JSON/RSC payload dump
-  const [isMounted, setIsMounted] = useState(false)
   const [step, setStep]     = useState<Step>('skill')
   const [data, setData]     = useState<Data>({ skill: '', level: '', goal: '', hours: '', uploadedFile: null })
   const [uploading, setUploading] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
 
   const stepIdx  = STEPS.indexOf(step as typeof STEPS[number])
   const progress = step === 'generating' ? 100 : ((stepIdx + 1) / STEPS.length) * 100
@@ -362,7 +353,7 @@ export default function OnboardingPage() {
               Building your roadmap…
             </h2>
             <p className="text-sm mb-10" style={{ color: '#6B7A99' }}>
-              Gemini 2.5 Flash is designing your personalized learning path
+              Gemini 3.1 Flash Lite Preview is designing your personalized learning path
             </p>
             <div className="flex flex-col gap-3 max-w-sm mx-auto text-left">
               {[
@@ -374,7 +365,7 @@ export default function OnboardingPage() {
               ].map((msg, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm"
                   style={{ color: '#6B7A99', animation: `fadeUp 0.5s ${i * 0.4}s ease both` }}>
-                  <Loader2 size={13} className="animate-spin shrink-0" style={{ color: '#4FFFA0' }} />
+                  <Loader2 size={13} className="animate-spin" style={{ color: '#4FFFA0' }} />
                   {msg}
                 </div>
               ))}

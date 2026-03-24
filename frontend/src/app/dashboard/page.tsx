@@ -15,6 +15,9 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single()
 
+  // User may have an auth session but no profile row (e.g., manual deletes in Supabase).
+  if (!profile) redirect('/auth/login')
+
   if (!profile?.onboarding_completed) redirect('/onboarding')
 
   // Explicitly casting the data to match your local types
@@ -88,7 +91,7 @@ export default async function DashboardPage() {
 
         {/* Continue Today Hero Card */}
         {roadmap && (
-          <div className="glass-card p-6 mb-6 border-brand-green/20 bg-gradient-to-br from-brand-green/[0.04] to-transparent">
+          <div className="glass-card p-6 mb-6 border-brand-green/20 bg-linear-to-br from-brand-green/4 to-transparent">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-[10px] font-bold tracking-widest uppercase mb-2 text-brand-green">CONTINUE TODAY</p>
@@ -117,7 +120,7 @@ export default async function DashboardPage() {
                 <span className="text-brand-green font-bold">{weekProgress}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-brand-border">
-                <div className="h-1.5 rounded-full transition-all duration-700 bg-gradient-to-r from-brand-green to-brand-blue"
+                <div className="h-1.5 rounded-full transition-all duration-700 bg-linear-to-r from-brand-green to-brand-blue"
                   style={{ width: `${weekProgress}%` }} />
               </div>
             </div>
@@ -139,8 +142,6 @@ export default async function DashboardPage() {
             </div>
             <div className="flex flex-col gap-3">
               {phases.map((phase, i) => {
-                const colors = ['text-brand-green', 'text-brand-blue', 'text-brand-purple', 'text-brand-yellow']
-                const colorClass = colors[i % colors.length]
                 const isCurrent = phase.name === roadmap?.current_phase
                 const activeWeeks = phase.duration_weeks ?? phase.weeks ?? [0]
                 const startWk = activeWeeks[0]
@@ -149,7 +150,7 @@ export default async function DashboardPage() {
                 return (
                   <div key={i} className="flex items-center gap-3">
                     <div className={cn(
-                      "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border transition-colors",
+                      "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border transition-colors",
                       phase.completed 
                         ? "bg-brand-green border-brand-green text-brand-bg" 
                         : isCurrent 
@@ -194,10 +195,10 @@ export default async function DashboardPage() {
                   <Link 
                     key={lesson.id} 
                     href={`/lesson/${lesson.id}`}
-                    className="flex items-center gap-3 py-2 border-b border-brand-border last:border-0 hover:bg-white/[0.02] transition-colors rounded-sm px-2 -mx-2"
+                    className="flex items-center gap-3 py-2 border-b border-brand-border last:border-0 hover:bg-white/2 transition-colors rounded-sm px-2 -mx-2"
                   >
                     <div className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-[10px] flex-shrink-0",
+                      "w-6 h-6 rounded-full flex items-center justify-center text-[10px]",
                       lesson.completed ? "bg-brand-green/10 text-brand-green" : "bg-brand-blue/10 text-brand-blue"
                     )}>
                       {lesson.completed ? '✓' : '▶'}

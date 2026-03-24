@@ -35,12 +35,12 @@ async def upload_book(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "File is too small or corrupted.")
 
     # 2. Database Record Initialization
-    supabase = await get_supabase()
+    supabase = get_supabase()
     book_id = str(uuid.uuid4())
     clean_skill = skill_tag.lower().strip()
 
     # We store the initial pending state
-    await supabase.table("user_books").insert({
+    supabase.table("user_books").insert({
         "id": book_id,
         "user_id": user_id,
         "file_name": file.filename,
@@ -70,9 +70,9 @@ async def upload_book(
 @router.get("/{book_id}/status", response_model=BookStatusResponse)
 async def get_book_status(book_id: str):
     """Checks the current progress of PDF embedding and topic detection."""
-    supabase = await get_supabase()
+    supabase = get_supabase()
     
-    result = await supabase.table("user_books").select("*").eq("id", book_id).single().execute()
+    result = supabase.table("user_books").select("*").eq("id", book_id).single().execute()
     
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Book record not found.")
@@ -93,10 +93,10 @@ async def delete_book(book_id: str, user_id: str):
     Deletes the book record and cascaded vector chunks.
     Ensures the requesting user owns the document.
     """
-    supabase = await get_supabase()
+    supabase = get_supabase()
     
     # Ownership verification
-    ownership_check = await supabase.table("user_books").select("user_id").eq("id", book_id).single().execute()
+    ownership_check = supabase.table("user_books").select("user_id").eq("id", book_id).single().execute()
     
     if not ownership_check.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Book not found.")
@@ -105,6 +105,6 @@ async def delete_book(book_id: str, user_id: str):
 
     # Atomic deletion
     # Ensure your Supabase schema has 'ON DELETE CASCADE' for book_chunks
-    await supabase.table("user_books").delete().eq("id", book_id).execute()
+    supabase.table("user_books").delete().eq("id", book_id).execute()
     
     return {"message": "Knowledge base updated. Book and chunks removed."}
