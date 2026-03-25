@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 
 interface Props {
-  userName: string
+  userName?: string
   streakDays?: number
   xpPoints?: number
 }
@@ -149,3 +149,5 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
     </nav>
   )
 }
+
+export default DashboardNavbar

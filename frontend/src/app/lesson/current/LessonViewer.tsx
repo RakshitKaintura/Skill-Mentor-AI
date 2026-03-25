@@ -282,6 +282,21 @@ export function LessonViewer({
   const steps      = lesson?.steps ?? []
   const totalSteps = steps.length
   const isLast     = activeStep === totalSteps - 1
+  const actionLessonId = lesson?.id ?? existingLessonId ?? ''
+  const sessionParams = new URLSearchParams({
+    topic,
+    skill,
+    roadmap_id: roadmapId,
+    lesson_id: actionLessonId,
+    difficulty: level || 'beginner',
+    language: 'javascript',
+    week: String(weekNumber),
+  })
+  const quizHref = `/quiz/new?${sessionParams.toString()}`
+  const playgroundHref = `/playground?${sessionParams.toString()}`
+  const reportHref = `/report?roadmap_id=${encodeURIComponent(roadmapId)}&week=${weekNumber}`
+  const reviewHref = `/review?roadmap_id=${encodeURIComponent(roadmapId)}`
+  const leaderboardHref = '/leaderboard'
 
   // ── Loading ──────────────────────────────────────────────
   if (generating || loading) {
@@ -391,6 +406,35 @@ export function LessonViewer({
             ))}
             <span className="text-xs ml-2" style={{ color: '#6B7A99' }}>{activeStep + 1}/{totalSteps}</span>
           </div>
+        </div>
+
+        {/* Learning Actions */}
+        <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
+          <Link href={quizHref}
+            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            Start Quiz
+          </Link>
+          <Link href={playgroundHref}
+            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            Start Challenge
+          </Link>
+          <Link href={reportHref}
+            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            Weekly Report
+          </Link>
+          <Link href={reviewHref}
+            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            Review Queue
+          </Link>
+          <Link href={leaderboardHref}
+            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            Leaderboard
+          </Link>
         </div>
 
         {/* Tab Switcher */}

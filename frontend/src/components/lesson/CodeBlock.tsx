@@ -57,3 +57,5 @@ export function CodeBlock({ code, language = 'javascript', title, maxHeight = 40
     </div>
   )
 }
+
+export default CodeBlock

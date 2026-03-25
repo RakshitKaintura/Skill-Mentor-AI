@@ -1,10 +1,19 @@
+"""
+SkillMentor AI — FastAPI v3.0.0 (Week 3: Quiz + Playground + Progress).
+Final backend orchestration for an Agentic AI Learning Platform.
+"""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.api.routes import health, roadmap, books, lessons, voice
 from app.core.gemini import get_gemini_client
+
+# Import specialized AI Agent and service routers
+from app.api.routes import (
+    health, roadmap, books, lessons, 
+    voice, quiz, playground, progress
+)
 
 # 1. Lifespan Management: Pre-warms AI resources
 @asynccontextmanager
@@ -18,7 +27,6 @@ async def lifespan(app: FastAPI):
         _ = get_gemini_client()
         print("🚀 SkillMentor AI: Gemini 3.1 Flash Lite Preview Client Initialized")
     except Exception as e:
-        # In development, we might want to start even if AI is offline
         settings = get_settings()
         if settings.app_env == "development":
             print(f"⚠️ Startup Warning: Gemini validation skipped: {e}")
@@ -27,16 +35,15 @@ async def lifespan(app: FastAPI):
             raise
     
     yield
-    
     print("🛑 SkillMentor AI: Shutting down backend service")
 
 settings = get_settings()
 
 # 2. App Initialization
 app = FastAPI(
-    title="SkillMentor AI — Backend API",
-    description="Agentic AI learning platform powered by Gemini 3.1 Flash Lite Preview",
-    version="2.1.0",
+    title="SkillMentor AI",
+    description="Agentic AI Learning Platform — Week 3 (Quiz + Playground + Progress)",
+    version="3.0.0",
     lifespan=lifespan,
     # Documentation is only exposed in development for security
     docs_url="/docs" if settings.app_env == "development" else None,
@@ -44,7 +51,6 @@ app = FastAPI(
 )
 
 # 3. CORS Configuration: Sanitizing origins
-# Professional practice: Strip trailing slashes to prevent browser CORS blocks
 origins = [
     settings.frontend_url.rstrip("/"),
     "http://localhost:3000",
@@ -60,24 +66,35 @@ app.add_middleware(
 )
 
 # 4. Route Registration
-# We use versioned prefixes (/v1) for core business logic to allow future API evolution
-app.include_router(health.router,  prefix="/v1")
-app.include_router(roadmap.router, prefix="/v1")
-app.include_router(books.router,   prefix="/v1")
-app.include_router(lessons.router, prefix="/v1")
-app.include_router(voice.router,   prefix="/v1")
+# Keep both prefixes active for compatibility across frontend modules.
+for api_prefix in ("/api", "/v1"):
+    app.include_router(health.router,     prefix=api_prefix)
+    app.include_router(roadmap.router,    prefix=api_prefix)
+    app.include_router(books.router,      prefix=api_prefix)
+    app.include_router(lessons.router,    prefix=api_prefix)
+    app.include_router(voice.router,      prefix=api_prefix)
+    app.include_router(quiz.router,       prefix=api_prefix)
+    app.include_router(playground.router, prefix=api_prefix)
+    app.include_router(progress.router,   prefix=api_prefix)
 
-# Global Shortcuts (Useful for load balancers and container health checks)
+# Global Shortcut for health checks (useful for devops/monitoring)
 app.include_router(health.router)
 
 @app.get("/", tags=["System"])
 async def root():
-    """Service landing point for verification and system status."""
+    """Service discovery endpoint."""
     return {
-        "service": "SkillMentor AI API",
+        "name": "SkillMentor AI",
+        "version": "3.0.0",
         "status": "operational",
-        "version": "2.1.0",
+        "week": 3,
         "engine": "Gemini 3.1 Flash Lite Preview",
-        "environment": settings.app_env,
-        "capabilities": ["Roadmaps", "RAG-based Lessons", "Doubt Solving", "Voice Coaching"]
+        "agents": ["Roadmap", "Lesson", "CodeCoach", "Quiz", "Doubt", "Progress"],
+        "capabilities": [
+            "AI Curriculum Generation", 
+            "RAG-based Tutoring", 
+            "Real-time Voice Coaching", 
+            "Adaptive Assessments",
+            "Interactive Code Playground"
+        ]
     }

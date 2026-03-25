@@ -39,3 +39,5 @@ export function PageLoader({ message = 'Loading mentor data...' }: { message?: s
     </div>
   )
 }
+
+export default Spinner
