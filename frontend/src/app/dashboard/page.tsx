@@ -39,6 +39,9 @@ export default async function DashboardPage() {
   const studyMinutes = progress?.total_study_minutes ?? 0
   const phases = (roadmap?.phases as Roadmap['phases']) ?? []
   const currentWeek = roadmap?.current_week ?? 1
+  const week4Query = roadmap
+    ? `?skill=${encodeURIComponent(roadmap.skill)}&level=${encodeURIComponent(roadmap.level)}&roadmap_id=${encodeURIComponent(roadmap.id)}`
+    : ''
 
   // Logic Fix: Handle the 'total_weeks' or 'total_duration' aliasing
   const totalWeeks = roadmap?.total_duration ?? roadmap?.total_weeks ?? 12
@@ -106,10 +109,6 @@ export default async function DashboardPage() {
                 <Link href="/lesson/current"
                   className="flex items-center gap-2 px-5 py-3 bg-brand-green text-brand-bg rounded-sm font-display font-bold text-sm hover:scale-[1.02] transition-transform">
                   <BookOpen size={14} /> Start Lesson
-                </Link>
-                <Link href="/lesson/current"
-                  className="flex items-center gap-2 px-5 py-3 border border-brand-blue/40 text-brand-blue rounded-sm font-display font-bold text-sm hover:bg-brand-blue/5 transition-colors">
-                  <Mic size={14} /> Voice Mode
                 </Link>
               </div>
             </div>
@@ -226,10 +225,10 @@ export default async function DashboardPage() {
         {/* Quick Actions Footer */}
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { href: '/roadmap', Icon: Map, color: 'text-brand-blue', label: 'View Roadmap' },
-            { href: '/progress', Icon: BarChart2, color: 'text-brand-green', label: 'My Progress' },
-            { href: '/achievements', Icon: Trophy, color: 'text-brand-yellow', label: 'Achievements' },
-            { href: '/settings', Icon: Target, color: 'text-brand-purple', label: 'Settings' },
+            { href: `/project${week4Query}`, Icon: Target, color: 'text-brand-yellow', label: 'Project Mentor' },
+            { href: `/interview${week4Query}`, Icon: Mic, color: 'text-brand-blue', label: 'Mock Interview' },
+            { href: `/career${week4Query}`, Icon: Star, color: 'text-brand-green', label: 'Career Hub' },
+            { href: `/resume${week4Query}`, Icon: BookOpen, color: 'text-brand-purple', label: 'Resume ATS Score' },
           ].map((action) => (
             <Link 
               key={action.href} 

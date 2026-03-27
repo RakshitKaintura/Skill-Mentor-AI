@@ -44,7 +44,7 @@ export function useLesson() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/lesson/${lessonId}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/${lessonId}`)
       if (!res.ok) throw new Error('Lesson not found')
       const data = await res.json()
       setLesson(data)
@@ -64,7 +64,7 @@ export function useLesson() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/lesson/generate`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/generate`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, ...params }),
@@ -89,7 +89,7 @@ export function useLesson() {
   const completeLesson = useCallback(async (lessonId: string, timeSpentMinutes: number = 0) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/lesson/${lessonId}/complete`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/${lessonId}/complete`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: user.id, lesson_id: lessonId, time_spent_minutes: timeSpentMinutes }),
@@ -101,7 +101,7 @@ export function useLesson() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/v1/lesson/${lessonId}/notes?user_id=${user.id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/lesson/${lessonId}/notes?user_id=${user.id}`,
       { method: 'POST' }
     )
     if (!res.ok) return null

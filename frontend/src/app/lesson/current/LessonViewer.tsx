@@ -14,7 +14,7 @@ import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft, Mic, MessageCircle, FileText,
-  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, Volume2, Pause, Play
+  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, Volume2, Pause, Play, Send
 } from 'lucide-react'
 
 interface Props {
@@ -68,6 +68,7 @@ export function LessonViewer({
   const [voiceDoubtError, setVoiceDoubtError] = useState<string | null>(null)
   const [voiceDoubtQuestion, setVoiceDoubtQuestion] = useState('')
   const [voiceDoubtResult, setVoiceDoubtResult] = useState<DoubtResult | null>(null)
+  const [voiceTextInput, setVoiceTextInput] = useState('')
     const getResumePrompt = (question?: string, result?: DoubtResult | null) => {
       const q = question ?? voiceDoubtQuestion
       const r = result ?? voiceDoubtResult
@@ -195,7 +196,7 @@ export function LessonViewer({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/lesson/doubt`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/doubt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -226,6 +227,52 @@ export function LessonViewer({
     } finally {
       setVoiceDoubtLoading(false)
     }
+  }
+
+  const handleTextDoubtStart = (question: string) => {
+    setVoiceDoubtQuestion(question)
+    setVoiceDoubtResult(null)
+    if (voice.state !== 'idle' && !voice.isPaused) {
+      stopDoubtSpeech()
+      voice.pause()
+    }
+  }
+
+  const handleTextDoubtComplete = (question: string, result: DoubtResult) => {
+    const resumePrompt = getResumePrompt(question, result)
+    setVoiceDoubtQuestion(question)
+    setVoiceDoubtResult(result)
+
+    if (voice.state !== 'idle') {
+      voice.resume(resumePrompt)
+      toast.success('Doubt answered. Voice lesson resumed automatically.')
+    }
+  }
+
+  const handlePanelChange = (mode: PanelMode) => {
+    setPanel(mode)
+    if (mode === 'doubt' && voice.state !== 'idle' && !voice.isPaused) {
+      stopDoubtSpeech()
+      voice.pause()
+    }
+  }
+
+  const sendTypedVoiceInput = () => {
+    const text = voiceTextInput.trim()
+    if (!text) return
+
+    if (voice.state === 'idle' || voice.state === 'error') {
+      toast.error('Start the voice session first, then type your response or question.')
+      return
+    }
+
+    stopDoubtSpeech()
+    if (voice.isPaused) {
+      voice.resume(text)
+    } else {
+      voice.sendText(text)
+    }
+    setVoiceTextInput('')
   }
 
   const startVoiceDoubtCapture = () => {
@@ -445,7 +492,7 @@ export function LessonViewer({
             { mode: 'voice'  as PanelMode, icon: Mic,           label: 'Voice'     },
             { mode: 'doubt'  as PanelMode, icon: MessageCircle, label: 'Ask Doubt' },
           ].map(({ mode, icon: Icon, label }) => (
-            <button key={mode} onClick={() => setPanel(mode)}
+            <button key={mode} onClick={() => handlePanelChange(mode)}
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs transition-all"
               style={{
                 background: panel === mode ? 'rgba(79,255,160,0.08)' : '#0E1420',
@@ -570,6 +617,35 @@ export function LessonViewer({
                 </p>
               )}
 
+              <div className="mt-5 text-left">
+                <p className="text-xs font-bold mb-2" style={{ color: '#6B7A99' }}>
+                  TYPE RESPONSE / QUESTION (Fallback)
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={voiceTextInput}
+                    onChange={(e) => setVoiceTextInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendTypedVoiceInput()}
+                    placeholder="Type if voice misses your input..."
+                    className="flex-1 px-4 py-2.5 text-sm rounded-sm"
+                    style={{ background: '#141B2D', borderColor: '#1E2A42', color: '#E8EDF8' }}
+                  />
+                  <button
+                    onClick={sendTypedVoiceInput}
+                    disabled={!voiceTextInput.trim()}
+                    className="px-4 py-2.5 rounded-sm flex items-center gap-2 text-sm font-bold disabled:opacity-40 transition-opacity"
+                    style={{ background: '#5B8EFF', color: '#080B14' }}
+                  >
+                    <Send size={14} />
+                    Send
+                  </button>
+                </div>
+                <p className="mt-2 text-[11px]" style={{ color: '#6B7A99' }}>
+                  Works while voice is active and also resumes session automatically if it was paused.
+                </p>
+              </div>
+
               {voiceDoubtError && <p className="mt-3 text-xs" style={{ color: '#FF6B6B' }}>{voiceDoubtError}</p>}
               {voice.error && <p className="mt-4 text-xs" style={{ color: '#FF6B6B' }}>{voice.error}</p>}
             </div>
@@ -636,7 +712,14 @@ export function LessonViewer({
         {/* DOUBT PANEL */}
         {panel === 'doubt' && (
           <div className="max-w-xl mx-auto">
-            <DoubtPanel topic={topic} skill={skill} lessonId={lesson.id} />
+            <DoubtPanel
+              topic={topic}
+              skill={skill}
+              lessonId={lesson.id}
+              onAskStart={handleTextDoubtStart}
+              onAskComplete={handleTextDoubtComplete}
+              voicePaused={voice.state !== 'idle' && voice.isPaused}
+            />
           </div>
         )}
       </div>

@@ -18,21 +18,26 @@ const dmMono = DM_Mono({
   weight: ['300', '400', '500'],
 })
 
-// 2. Metadata API (Streaming-ready)
+// 2. Metadata API (SEO Optimized)
 export const metadata: Metadata = {
   title: 'SkillMentor AI — Your Personal AI Teacher',
-  description: 'Master any skill from zero to job-ready with personalized agentic roadmaps and 24/7 AI tutoring.',
+  description: 'Any skill. Any level. Any time. Powered by Gemini 3.1 Flash.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
-  icons: {
-    icon: '/favicon.ico',
+  openGraph: {
+    title: 'SkillMentor AI',
+    description: 'Learn any skill with your personal AI teacher',
+    type: 'website',
+    url: 'https://skillmentor.ai',
+    siteName: 'SkillMentor AI',
   },
 }
 
-// 3. Viewport API (Standardized separate export for 2026)
+// 3. Viewport API (Standardized separate export for 2026 Next.js)
 export const viewport: Viewport = {
-  themeColor: '#080B14',
+  themeColor: '#4FFFA0',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -48,7 +53,6 @@ export default function RootLayout({
     >
       <body className="bg-brand-bg text-brand-text font-mono antialiased selection:bg-brand-green selection:text-brand-bg">
         {/* Main Application Shell */}
-        {/* 'min-h-screen' fixed from 'min-height-screen' */}
         <main className="relative z-10 min-h-screen">
           {children}
         </main>

@@ -1,0 +1,38 @@
+{
+  "name": "SkillMentor AI",
+  "short_name": "SkillMentor",
+  "description": "Your personal AI teacher. Any skill. Any level. Any time.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080B14",
+  "theme_color": "#4FFFA0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View your learning dashboard"
+    },
+    {
+      "name": "Current Lesson",
+      "url": "/lesson/current",
+      "description": "Continue your lesson"
+    }
+  ]
+}

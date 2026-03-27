@@ -1,6 +1,6 @@
 """
-SkillMentor AI — FastAPI v3.0.0 (Week 3: Quiz + Playground + Progress).
-Final backend orchestration for an Agentic AI Learning Platform.
+SkillMentor AI — FastAPI v4.0.0 (The Complete Agentic Suite)
+Final backend orchestration for all 8 AI Agents.
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -9,13 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.gemini import get_gemini_client
 
-# Import specialized AI Agent and service routers
+# 1. Comprehensive Agent & Service Route Imports
 from app.api.routes import (
     health, roadmap, books, lessons, 
-    voice, quiz, playground, progress
+    voice, quiz, playground, progress,
+    projects, career
 )
 
-# 1. Lifespan Management: Pre-warms AI resources
+# 2. Lifespan Management: Pre-warms AI resources
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
         # Pre-initialize and validate the Gemini Client
         _ = get_gemini_client()
         print("🚀 SkillMentor AI: Gemini 3.1 Flash Lite Preview Client Initialized")
+        print("✅ All 8 Agents (Roadmap to Career) are standing by.")
     except Exception as e:
         settings = get_settings()
         if settings.app_env == "development":
@@ -39,18 +41,19 @@ async def lifespan(app: FastAPI):
 
 settings = get_settings()
 
-# 2. App Initialization
+# 3. App Initialization
 app = FastAPI(
     title="SkillMentor AI",
-    description="Agentic AI Learning Platform — Week 3 (Quiz + Playground + Progress)",
-    version="3.0.0",
+    description="Full-Stack Agentic AI Learning Platform — v4.0.0",
+    version="4.0.0",
     lifespan=lifespan,
     # Documentation is only exposed in development for security
     docs_url="/docs" if settings.app_env == "development" else None,
     redoc_url="/redoc" if settings.app_env == "development" else None,
 )
 
-# 3. CORS Configuration: Sanitizing origins
+# 4. CORS Configuration: Sanitizing origins
+# Professional practice: Strip trailing slashes to prevent browser CORS blocks
 origins = [
     settings.frontend_url.rstrip("/"),
     "http://localhost:3000",
@@ -65,36 +68,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. Route Registration
-# Keep both prefixes active for compatibility across frontend modules.
-for api_prefix in ("/api", "/v1"):
-    app.include_router(health.router,     prefix=api_prefix)
-    app.include_router(roadmap.router,    prefix=api_prefix)
-    app.include_router(books.router,      prefix=api_prefix)
-    app.include_router(lessons.router,    prefix=api_prefix)
-    app.include_router(voice.router,      prefix=api_prefix)
-    app.include_router(quiz.router,       prefix=api_prefix)
-    app.include_router(playground.router, prefix=api_prefix)
-    app.include_router(progress.router,   prefix=api_prefix)
+# 5. Route Registration
+# We use a centralized loop to register all agent routers with the /api prefix.
+agent_routers = [
+    health.router, roadmap.router, books.router, lessons.router, 
+    voice.router, quiz.router, playground.router, progress.router,
+    projects.router, career.router
+]
 
-# Global Shortcut for health checks (useful for devops/monitoring)
-app.include_router(health.router)
+for router in agent_routers:
+    # Health checks stay at root; agents are versioned under /api
+    prefix = "/api" if router != health.router else ""
+    app.include_router(router, prefix=prefix)
 
 @app.get("/", tags=["System"])
 async def root():
-    """Service discovery endpoint."""
+    """Service discovery and capability overview."""
     return {
         "name": "SkillMentor AI",
-        "version": "3.0.0",
-        "status": "operational",
-        "week": 3,
+        "version": "4.0.0",
+        "status": "Operational - All 8 Agents Active",
         "engine": "Gemini 3.1 Flash Lite Preview",
-        "agents": ["Roadmap", "Lesson", "CodeCoach", "Quiz", "Doubt", "Progress"],
+        "agents": [
+            "Roadmap Architect", "Lesson Teacher", "Code Coach", 
+            "Quiz Examiner", "Doubt Solver", "Progress Tracker",
+            "Project Mentor", "Career Prep"
+        ],
         "capabilities": [
-            "AI Curriculum Generation", 
-            "RAG-based Tutoring", 
-            "Real-time Voice Coaching", 
+            "Dynamic Curriculum Generation",
+            "RAG-Powered Technical Tutoring",
+            "Real-Time Voice Coaching",
             "Adaptive Assessments",
-            "Interactive Code Playground"
+            "Socratic Code Playground",
+            "Industry Project Mentorship",
+            "AI Career Coaching & Verified Certification"
         ]
     }

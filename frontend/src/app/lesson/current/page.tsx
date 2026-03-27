@@ -54,7 +54,7 @@ export default async function CurrentLessonPage() {
     <div className="min-h-screen bg-brand-bg">
       <main className="max-w-5xl mx-auto px-5 py-8">
         {/* LessonViewer is a Client Component that handles:
-            - Calling the /v1/lesson/generate endpoint
+          - Calling the /api/lesson/generate endpoint
             - Rendering the 6-step lesson content
             - Handling PDF generation and Doubt Solving
         */}

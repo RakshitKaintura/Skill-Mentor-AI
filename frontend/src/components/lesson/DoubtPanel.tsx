@@ -10,6 +10,9 @@ interface DoubtPanelProps {
   skill:      string
   lessonId?:  string
   onClose?:   () => void
+  onAskStart?: (question: string) => void
+  onAskComplete?: (question: string, result: DoubtResult) => void
+  voicePaused?: boolean
 }
 
 interface DoubtResult {
@@ -18,7 +21,7 @@ interface DoubtResult {
   code_example: string | null
 }
 
-export function DoubtPanel({ topic, skill, lessonId, onClose }: DoubtPanelProps) {
+export function DoubtPanel({ topic, skill, lessonId, onClose, onAskStart, onAskComplete, voicePaused = false }: DoubtPanelProps) {
   const supabase = createClient()
   const [question, setQuestion] = useState('')
   const [result, setResult]     = useState<DoubtResult | null>(null)
@@ -32,12 +35,13 @@ export function DoubtPanel({ topic, skill, lessonId, onClose }: DoubtPanelProps)
     setError(null)
     const q = question.trim()
     setQuestion('')
+    onAskStart?.(q)
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/lesson/doubt`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/doubt`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, lesson_id: lessonId, topic, skill, question: q }),
@@ -47,6 +51,7 @@ export function DoubtPanel({ topic, skill, lessonId, onClose }: DoubtPanelProps)
       const data: DoubtResult = await res.json()
       setResult(data)
       setHistory(h => [...h, { q, r: data }])
+      onAskComplete?.(q, data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
@@ -70,6 +75,12 @@ export function DoubtPanel({ topic, skill, lessonId, onClose }: DoubtPanelProps)
 
       {/* Input */}
       <div className="p-5">
+        {voicePaused && (
+          <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-sm text-xs"
+            style={{ background: 'rgba(255,209,102,0.1)', color: '#FFD166', border: '1px solid rgba(255,209,102,0.3)' }}>
+            ⏸ Voice lesson paused
+          </div>
+        )}
         <div className="flex gap-3">
           <input type="text" value={question}
             onChange={e => setQuestion(e.target.value)}

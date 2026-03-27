@@ -34,6 +34,35 @@ export function useVoice(options: UseVoiceOptions) {
   const hasServerAudioRef = useRef(false)
   const isPausedRef = useRef(false)
 
+  const pickPreferredFemaleVoice = useCallback((): SpeechSynthesisVoice | null => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null
+
+    const voices = window.speechSynthesis.getVoices()
+    if (!voices.length) return null
+
+    const preferredNames = [
+      'Microsoft Zira',
+      'Microsoft Aria',
+      'Microsoft Jenny',
+      'Google US English',
+      'Samantha',
+      'Victoria',
+      'Karen',
+      'Susan',
+    ]
+
+    const byPreferredName = preferredNames
+      .map(name => voices.find(v => v.name.includes(name)))
+      .find(Boolean)
+    if (byPreferredName) return byPreferredName
+
+    const byFemaleHint = voices.find(v => /female|woman|girl/i.test(`${v.name} ${v.voiceURI}`))
+    if (byFemaleHint) return byFemaleHint
+
+    const byEnglishFallback = voices.find(v => v.lang?.toLowerCase().startsWith('en'))
+    return byEnglishFallback ?? voices[0] ?? null
+  }, [])
+
   useEffect(() => {
     isPausedRef.current = isPaused
   }, [isPaused])
@@ -43,6 +72,8 @@ export function useVoice(options: UseVoiceOptions) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
 
     const utterance = new SpeechSynthesisUtterance(text)
+    const preferredVoice = pickPreferredFemaleVoice()
+    if (preferredVoice) utterance.voice = preferredVoice
     utterance.rate = 1
     utterance.pitch = 1
 
@@ -54,7 +85,7 @@ export function useVoice(options: UseVoiceOptions) {
     }
 
     window.speechSynthesis.speak(utterance)
-  }, [isMuted])
+  }, [isMuted, pickPreferredFemaleVoice])
 
   useEffect(() => { return () => { stop() } }, [])  // eslint-disable-line
 
@@ -85,7 +116,7 @@ export function useVoice(options: UseVoiceOptions) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       streamRef.current = stream
 
-      const wsUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('http', 'ws')}/v1/voice/ws?topic=${encodeURIComponent(options.topic)}&skill=${encodeURIComponent(options.skill)}&level=${encodeURIComponent(options.level ?? 'beginner')}`
+      const wsUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('http', 'ws')}/api/voice/ws?topic=${encodeURIComponent(options.topic)}&skill=${encodeURIComponent(options.skill)}&level=${encodeURIComponent(options.level ?? 'beginner')}`
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
       audioCtx.current = new AudioContext()
@@ -142,7 +173,7 @@ export function useVoice(options: UseVoiceOptions) {
         }
       }
 
-      ws.onerror = () => { setError('Voice connection failed. Check microphone permissions.'); setState('error') }
+      ws.onerror = () => { setError('Voice connection failed. Check backend availability and microphone permissions.'); setState('error') }
       ws.onclose = () => { if (state !== 'idle') setState('idle') }
 
     } catch (e: unknown) {
