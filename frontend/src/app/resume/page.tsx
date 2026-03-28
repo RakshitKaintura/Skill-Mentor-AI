@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
@@ -16,7 +16,7 @@ type ResumeReviewResponse = {
 	top_improvement?: string
 }
 
-export default function ResumePage() {
+function ResumePageContent() {
 	const params = useSearchParams()
 	const { user, loading } = useAuth()
 
@@ -164,5 +164,13 @@ export default function ResumePage() {
 				)}
 			</div>
 		</div>
+	)
+}
+
+export default function ResumePage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+			<ResumePageContent />
+		</Suspense>
 	)
 }

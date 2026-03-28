@@ -1,13 +1,25 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+interface VerifiedCertificate {
+  full_name: string
+  skill: string
+  level: string
+  issued_at: string
+  xp_at_issue?: number
+  lessons_count?: number
+  projects_count?: number
+  verify_code: string
+}
+
 export default async function VerifyCertPage({ params }: { params: { code: string } }) {
-  let cert: any = null
+  let cert: VerifiedCertificate | null = null
   try {
     const res  = await fetch(`${API}/api/career/certificate/verify/${params.code}`, { cache: 'no-store' })
-    const data = await res.json()
-    if (data.valid) cert = data.certificate
+    const data = await res.json() as { valid?: boolean; certificate?: VerifiedCertificate }
+    if (data.valid && data.certificate) cert = data.certificate
   } catch { /* not found */ }
 
   if (!cert) return notFound()
@@ -39,9 +51,9 @@ export default async function VerifyCertPage({ params }: { params: { code: strin
 
           <div className="grid grid-cols-3 gap-4 border border-brand-border rounded-lg p-4 mb-6">
             {[
-              { label: 'XP Earned',  value: cert.xp_at_issue?.toLocaleString() },
-              { label: 'Lessons',    value: cert.lessons_count },
-              { label: 'Projects',   value: cert.projects_count },
+              { label: 'XP Earned',  value: cert.xp_at_issue?.toLocaleString() ?? '0' },
+              { label: 'Lessons',    value: cert.lessons_count ?? 0 },
+              { label: 'Projects',   value: cert.projects_count ?? 0 },
             ].map((s, i) => (
               <div key={i} className="text-center">
                 <div className="font-display font-black text-xl text-brand-green">{s.value}</div>
@@ -56,9 +68,9 @@ export default async function VerifyCertPage({ params }: { params: { code: strin
         </div>
 
         <div className="text-center mt-6">
-          <a href="/" className="text-brand-blue font-mono text-sm hover:underline">
+          <Link href="/" className="text-brand-blue font-mono text-sm hover:underline">
             ← Go to SkillMentor AI
-          </a>
+          </Link>
         </div>
       </div>
     </div>

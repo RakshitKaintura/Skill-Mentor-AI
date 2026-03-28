@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Link from 'next/link'
-import { ArrowRight, BookOpen, Mic, BarChart2, Trophy, Flame, Star, Map, Clock, Target } from 'lucide-react'
+import { ArrowRight, BookOpen, Mic, Flame, Star, Map, Clock, Target } from 'lucide-react'
 import type { Roadmap, UserProgress } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -223,8 +223,9 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
+            { href: '/daily-challenge', Icon: Flame, color: 'text-brand-yellow', label: 'Daily Challenge' },
             { href: `/project${week4Query}`, Icon: Target, color: 'text-brand-yellow', label: 'Project Mentor' },
             { href: `/interview${week4Query}`, Icon: Mic, color: 'text-brand-blue', label: 'Mock Interview' },
             { href: `/career${week4Query}`, Icon: Star, color: 'text-brand-green', label: 'Career Hub' },

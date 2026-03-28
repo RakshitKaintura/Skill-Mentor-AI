@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
@@ -49,7 +49,7 @@ function getErrorMessage(e: unknown) {
   return e instanceof Error ? e.message : 'Unexpected error'
 }
 
-export default function ReportPage() {
+function ReportPageContent() {
   const params    = useSearchParams()
   const router    = useRouter()
   const { user }  = useAuth()
@@ -61,14 +61,11 @@ export default function ReportPage() {
   const roadmapId  = params.get('roadmap_id') || ''
   const weekNumber = parseInt(params.get('week') || '1')
 
-  useEffect(() => {
-    if (user && roadmapId) fetchReport()
-  }, [user, roadmapId])
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
+    if (!user || !roadmapId) return
     setLoading(true)
     try {
-      const res = await fetch(`${API}/api/progress/report-card/${user?.id}?roadmap_id=${roadmapId}`)
+      const res = await fetch(`${API}/api/progress/report-card/${user.id}?roadmap_id=${roadmapId}`)
       const data = await res.json() as ReportListResponse
       const reports = data.reports || []
       const thisWeek = reports.find((r) => r.week_number === weekNumber)
@@ -78,7 +75,13 @@ export default function ReportPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, roadmapId, weekNumber])
+
+  useEffect(() => {
+    if (user && roadmapId) {
+      void fetchReport()
+    }
+  }, [user, roadmapId, fetchReport])
 
   const generateReport = async () => {
     if (!user) return
@@ -264,5 +267,13 @@ export default function ReportPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+      <ReportPageContent />
+    </Suspense>
   )
 }

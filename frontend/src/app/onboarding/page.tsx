@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAnalytics } from '@/hooks/useAnalytics'
 import { useToast } from '@/components/ui/Toast'
 import { ArrowRight, ArrowLeft, CheckCircle, Loader2, Upload } from 'lucide-react'
 
@@ -43,6 +44,7 @@ const STEPS: Step[] = ['skill','level','goal','time','upload']
 export default function OnboardingPage() {
   const supabase = createClient()
   const toast    = useToast()
+  const { track } = useAnalytics()
 
   const [step, setStep]     = useState<Step>('skill')
   const [data, setData]     = useState<Data>({ skill: '', level: '', goal: '', hours: '', uploadedFile: null })
@@ -100,6 +102,17 @@ export default function OnboardingPage() {
         const errData = await res.json().catch(() => ({ detail: 'Backend generation failed' }));
         throw new Error(errData.detail || 'The AI architect encountered an error.');
       }
+
+      void track('roadmap_generated', {
+        page: '/onboarding',
+        event_data: {
+          skill: data.skill,
+          level: data.level,
+          goal: data.goal,
+          hours_per_day: parseFloat(data.hours || '1'),
+          used_book_upload: Boolean(data.uploadedFile),
+        },
+      })
 
       const { error: profileErr } = await supabase.from('profiles')
         .update({ 

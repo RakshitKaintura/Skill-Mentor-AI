@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
@@ -8,7 +8,7 @@ import type { JobReadiness } from '@/types/week4'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-export default function CareerPage() {
+function CareerPageContent() {
   const params    = useSearchParams()
   const router    = useRouter()
   const { user }  = useAuth()
@@ -23,27 +23,28 @@ export default function CareerPage() {
   const level     = params.get('level')      || 'beginner'
   const roadmapId = params.get('roadmap_id') || ''
 
-  useEffect(() => {
-    if (!user || !skill || !roadmapId) return
-    const key = `${user.id}|${roadmapId}|${skill}`
-    if (fetchKeyRef.current === key || inFlightRef.current) return
-    fetchKeyRef.current = key
-    fetchReadiness()
-  }, [user?.id, skill, roadmapId])
-
-  const fetchReadiness = async () => {
-    if (!user || !roadmapId) return
+  const fetchReadiness = useCallback(async () => {
+    const userId = user?.id
+    if (!userId || !roadmapId) return
     inFlightRef.current = true
     setLoading(true)
     try {
-      const res  = await fetch(`${API}/api/career/job-readiness/${user.id}?roadmap_id=${roadmapId}`)
+      const res  = await fetch(`${API}/api/career/job-readiness/${userId}?roadmap_id=${roadmapId}`)
       const data = await res.json()
       if (data.success) setReadiness(data.readiness)
     } finally {
       inFlightRef.current = false
       setLoading(false)
     }
-  }
+  }, [user?.id, roadmapId])
+
+  useEffect(() => {
+    if (!user || !skill || !roadmapId) return
+    const key = `${user.id}|${roadmapId}|${skill}`
+    if (fetchKeyRef.current === key || inFlightRef.current) return
+    fetchKeyRef.current = key
+    void fetchReadiness()
+  }, [user, skill, roadmapId, fetchReadiness])
 
   const generateCertificate = async () => {
     if (!user || !readiness?.job_ready) return
@@ -196,5 +197,13 @@ export default function CareerPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function CareerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+      <CareerPageContent />
+    </Suspense>
   )
 }

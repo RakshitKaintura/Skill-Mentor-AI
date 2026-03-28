@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
@@ -14,19 +14,22 @@ export default function SpacedReviewPage() {
   const [reviews, setReviews]   = useState<DueReview[]>([])
   const [loading, setLoading]   = useState(true)
 
-  useEffect(() => {
-    if (user) fetchReviews()
-  }, [user])
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
+    if (!user?.id) return
     try {
-      const res  = await fetch(`${API}/api/progress/due-reviews/${user?.id}`)
+      const res  = await fetch(`${API}/api/progress/due-reviews/${user.id}`)
       const data = await res.json()
       setReviews(data.due_reviews || [])
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (user) {
+      void fetchReviews()
+    }
+  }, [user, fetchReviews])
 
   const startReview = (review: DueReview) => {
     const sp = new URLSearchParams(window.location.search)

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLesson } from '@/hooks/useLesson'
 import { useVoice } from '@/hooks/useVoice'
+import { useAnalytics } from '@/hooks/useAnalytics'
 import { createClient } from '@/lib/supabase/client'
 import { LessonStepCard } from '@/components/lesson/LessonStepCard'
 import { DoubtPanel } from '@/components/lesson/DoubtPanel'
@@ -54,6 +55,7 @@ export function LessonViewer({
   const supabase = createClient()
   const router = useRouter()
   const toast  = useToast()
+  const { track } = useAnalytics()
 
   const { lesson, loading, error, generating, generateLesson, fetchLesson, completeLesson, generateNotes } = useLesson()
   const voice = useVoice({ topic, skill, level,
@@ -136,6 +138,15 @@ export function LessonViewer({
     setCompleting(true)
     const mins = Math.round((Date.now() - startTime) / 60000)
     await completeLesson(lesson.id, mins)
+    void track('lesson_completed', {
+      event_data: {
+        lesson_id: lesson.id,
+        topic,
+        skill,
+        minutes_spent: mins,
+      },
+      page: '/lesson/current',
+    })
     toast.success('Lesson completed! +100 XP 🎉')
     setTimeout(() => router.push('/dashboard'), 1500)
   }
@@ -190,6 +201,11 @@ export function LessonViewer({
   }
 
   const askDoubt = async (question: string) => {
+    if (!lesson) {
+      setVoiceDoubtError('Lesson is still loading. Try again in a moment.')
+      return
+    }
+
     setVoiceDoubtLoading(true)
     setVoiceDoubtError(null)
     try {

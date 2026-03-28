@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useAnalytics } from '@/hooks/useAnalytics'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import type {
@@ -10,17 +11,18 @@ import type {
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-export default function InterviewPage() {
+function InterviewPageContent() {
   const params   = useSearchParams()
   const router   = useRouter()
   const { user } = useAuth()
+  const { track } = useAnalytics()
 
   const [session,      setSession]      = useState<InterviewSession | null>(null)
   const [summary,      setSummary]      = useState<InterviewSummary | null>(null)
   const [currentQ,     setCurrentQ]     = useState(0)
   const [answer,       setAnswer]       = useState('')
   const [evaluations,  setEvaluations]  = useState<AnswerEvaluation[]>([])
-  const [allAnswers,   setAllAnswers]   = useState<any[]>([])
+  const [allAnswers,   setAllAnswers]   = useState<Array<{ question_id: number; answer: string }>>([])
   const [currentEval,  setCurrentEval]  = useState<AnswerEvaluation | null>(null)
   const [loading,      setLoading]      = useState(false)
   const [evaluating,   setEvaluating]   = useState(false)
@@ -112,6 +114,19 @@ export default function InterviewPage() {
       if (data.success) {
         setSummary(data.summary)
         setPhase('results')
+        void track('interview_completed', {
+          page: '/interview',
+          event_data: {
+            session_id: session.session_id,
+            skill,
+            level,
+            interview_type: interviewType,
+            questions_count: session.questions.length,
+            overall_score: data.summary?.overall_score,
+            xp_awarded: data.summary?.xp_awarded,
+            job_ready: data.summary?.job_ready,
+          },
+        })
       }
     } finally {
       setFinishing(false)
@@ -390,7 +405,7 @@ export default function InterviewPage() {
           </div>
 
           <div className="text-center py-4">
-            <p className="text-brand-muted font-mono text-sm italic">"{summary.encouragement}"</p>
+            <p className="text-brand-muted font-mono text-sm italic">&ldquo;{summary.encouragement}&rdquo;</p>
           </div>
 
           <div className="flex gap-3">
@@ -416,5 +431,13 @@ export default function InterviewPage() {
     <div className="min-h-screen bg-brand-bg flex items-center justify-center">
       <Spinner />
     </div>
+  )
+}
+
+export default function InterviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+      <InterviewPageContent />
+    </Suspense>
   )
 }

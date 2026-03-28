@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     app_env: str = "development"
     allow_start_without_gemini: bool = False
+    admin_api_key: str = "skillmentor-admin-secret"
+    admin_allowed_emails: str = ""
 
     # AI Model Configuration
     gemini_model: str = "gemini-3.1-flash-lite-preview"

@@ -1,23 +1,44 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useAnalytics } from '@/hooks/useAnalytics'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import type { Project, ProjectReview } from '@/types/week4'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-export default function ProjectPage() {
+interface MentorHint {
+  mentor_response: string
+  concrete_next_step: string
+  resource_suggestion: string
+}
+
+const asRecord = (value: unknown): Record<string, unknown> => (
+  typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+)
+
+const asStringArray = (value: unknown): string[] => (
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+)
+
+const asNumber = (value: unknown, fallback = 0): number => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function ProjectPageContent() {
   const params   = useSearchParams()
   const router   = useRouter()
   const { user } = useAuth()
+  const { track } = useAnalytics()
 
   const [project, setProject]     = useState<Project | null>(null)
   const [review,  setReview]      = useState<ProjectReview | null>(null)
   const [code,    setCode]        = useState('')
   const [github,  setGithub]      = useState('')
-  const [hint,    setHint]        = useState<any>(null)
+  const [hint,    setHint]        = useState<MentorHint | null>(null)
   const [question, setQuestion]   = useState('')
   const [error, setError]         = useState<string | null>(null)
   const [loading, setLoading]     = useState(false)
@@ -36,130 +57,183 @@ export default function ProjectPage() {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
   const hasPlaceholder = (value: string) => value.toUpperCase().includes('YOUR_')
 
-  const normalizeProject = (raw: any): Project => ({
-    project_id: raw?.project_id || raw?.id || '',
-    title: raw?.title || 'Untitled Project',
-    description: raw?.description || '',
-    requirements: raw?.requirements || [],
-    tech_stack: raw?.tech_stack || [],
-    starter_hints: raw?.starter_hints || raw?.mentor_secrets || [],
-    expected_outcome: raw?.expected_outcome || raw?.success_criteria || '',
-    estimated_hours: raw?.estimated_hours || 0,
-    level: raw?.level || level,
-    skill: raw?.skill || skill,
-    status: raw?.status,
-  })
+  const normalizeProject = useCallback((raw: unknown): Project => {
+    const obj = asRecord(raw)
+    const projectIdValue = typeof obj.project_id === 'string'
+      ? obj.project_id
+      : (typeof obj.id === 'string' ? obj.id : '')
+    const statusValue = typeof obj.status === 'string'
+      ? obj.status
+      : undefined
 
-  const normalizeReview = (raw: any): ProjectReview => {
-    const requirementsFromAudit = Array.isArray(raw?.requirement_audit)
-      ? raw.requirement_audit.map((item: any) => ({
-          requirement: item?.req || item?.requirement || 'Requirement',
-          met: (item?.status || '').toLowerCase() === 'met' || !!item?.met,
-          comment: item?.comment || '',
-        }))
+    return {
+      project_id: projectIdValue,
+      title: typeof obj.title === 'string' ? obj.title : 'Untitled Project',
+      description: typeof obj.description === 'string' ? obj.description : '',
+      requirements: asStringArray(obj.requirements),
+      tech_stack: asStringArray(obj.tech_stack),
+      starter_hints: asStringArray(obj.starter_hints ?? obj.mentor_secrets),
+      expected_outcome: typeof obj.expected_outcome === 'string'
+        ? obj.expected_outcome
+        : (typeof obj.success_criteria === 'string' ? obj.success_criteria : ''),
+      estimated_hours: asNumber(obj.estimated_hours, 0),
+      level: typeof obj.level === 'string' ? obj.level : level,
+      skill: typeof obj.skill === 'string' ? obj.skill : skill,
+      status: statusValue === 'assigned' || statusValue === 'in_progress' || statusValue === 'submitted' || statusValue === 'reviewed'
+        ? statusValue
+        : undefined,
+    }
+  }, [level, skill])
+
+  const normalizeReview = useCallback((raw: unknown): ProjectReview => {
+    const obj = asRecord(raw)
+
+    const requirementsFromAudit = Array.isArray(obj.requirement_audit)
+      ? obj.requirement_audit.map((item: unknown) => {
+          const entry = asRecord(item)
+          const status = typeof entry.status === 'string' ? entry.status : ''
+          return {
+            requirement: typeof entry.req === 'string'
+              ? entry.req
+              : (typeof entry.requirement === 'string' ? entry.requirement : 'Requirement'),
+            met: status.toLowerCase() === 'met' || Boolean(entry.met),
+            comment: typeof entry.comment === 'string' ? entry.comment : '',
+          }
+        })
       : []
 
-    const requirementsCheck = Array.isArray(raw?.requirements_check)
-      ? raw.requirements_check
+    const requirementsCheck = Array.isArray(obj.requirements_check)
+      ? obj.requirements_check.map((item: unknown) => {
+          const entry = asRecord(item)
+          return {
+            requirement: typeof entry.requirement === 'string' ? entry.requirement : 'Requirement',
+            met: Boolean(entry.met),
+            comment: typeof entry.comment === 'string' ? entry.comment : '',
+          }
+        })
       : requirementsFromAudit
 
-    const improvementFromCritique = Array.isArray(raw?.code_critique)
-      ? raw.code_critique.map((item: any) => ({
-          issue: item?.issue || 'Improvement area',
-          where: item?.location || item?.where || 'Codebase',
-          how_to_fix: item?.suggestion || item?.how_to_fix || 'Refactor and improve this part.',
-        }))
+    const improvementFromCritique = Array.isArray(obj.code_critique)
+      ? obj.code_critique.map((item: unknown) => {
+          const entry = asRecord(item)
+          return {
+            issue: typeof entry.issue === 'string' ? entry.issue : 'Improvement area',
+            where: typeof entry.location === 'string'
+              ? entry.location
+              : (typeof entry.where === 'string' ? entry.where : 'Codebase'),
+            how_to_fix: typeof entry.suggestion === 'string'
+              ? entry.suggestion
+              : (typeof entry.how_to_fix === 'string' ? entry.how_to_fix : 'Refactor and improve this part.'),
+          }
+        })
       : []
 
-    const nextSteps = Array.isArray(raw?.next_steps)
-      ? raw.next_steps
-      : raw?.next_milestone
-        ? [raw.next_milestone]
+    const nextMilestone = typeof obj.next_milestone === 'string' ? obj.next_milestone : ''
+    const nextSteps = Array.isArray(obj.next_steps)
+      ? asStringArray(obj.next_steps)
+      : nextMilestone
+        ? [nextMilestone]
         : []
 
     return {
-      score: Number(raw?.score || 0),
-      grade: raw?.grade || 'D',
+      score: asNumber(obj.score, 0),
+      grade: typeof obj.grade === 'string' ? obj.grade : 'D',
       requirements_check: requirementsCheck,
-      code_quality: raw?.code_quality || {
-        readability: 0,
-        structure: 0,
-        best_practices: 0,
-        comments: [],
-      },
-      what_went_well: Array.isArray(raw?.what_went_well) ? raw.what_went_well : (raw?.top_strengths || []),
-      what_to_improve: Array.isArray(raw?.what_to_improve) ? raw.what_to_improve : improvementFromCritique,
-      overall_feedback: raw?.overall_feedback || raw?.overall_verdict || '',
+      code_quality: (() => {
+        const quality = asRecord(obj.code_quality)
+        return {
+          readability: asNumber(quality.readability, 0),
+          structure: asNumber(quality.structure, 0),
+          best_practices: asNumber(quality.best_practices, 0),
+          comments: asStringArray(quality.comments),
+        }
+      })(),
+      what_went_well: Array.isArray(obj.what_went_well)
+        ? asStringArray(obj.what_went_well)
+        : asStringArray(obj.top_strengths),
+      what_to_improve: Array.isArray(obj.what_to_improve)
+        ? obj.what_to_improve.map((item: unknown) => {
+            const entry = asRecord(item)
+            return {
+              issue: typeof entry.issue === 'string' ? entry.issue : 'Improvement area',
+              where: typeof entry.where === 'string' ? entry.where : 'Codebase',
+              how_to_fix: typeof entry.how_to_fix === 'string' ? entry.how_to_fix : 'Refactor and improve this part.',
+            }
+          })
+        : improvementFromCritique,
+      overall_feedback: typeof obj.overall_feedback === 'string'
+        ? obj.overall_feedback
+        : (typeof obj.overall_verdict === 'string' ? obj.overall_verdict : ''),
       next_steps: nextSteps,
-      xp_awarded: Number(raw?.xp_awarded || 0),
+      xp_awarded: asNumber(obj.xp_awarded, 0),
     }
-  }
+  }, [])
 
   useEffect(() => {
+    const fetchExisting = async () => {
+      setLoading(true)
+      try {
+        const res  = await fetch(`${API}/api/projects/${projectId}`)
+        const data = await res.json()
+        setProject(normalizeProject(data))
+        if (data.submitted_code) setCode(data.submitted_code)
+        if (data.github_url)     setGithub(data.github_url)
+        if (data.review)         setReview(normalizeReview(data.review))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const generateProject = async () => {
+      setLoading(true)
+      try {
+        const res  = await fetch(`${API}/api/projects/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user!.id, roadmap_id: roadmapId, skill, level }),
+        })
+        const data = await res.json()
+        if (data.success) setProject(normalizeProject(data.project))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const loadOrCreateProject = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`${API}/api/projects/user/${user!.id}?roadmap_id=${roadmapId}&limit=5`)
+        const data = await res.json().catch(() => ({ projects: [] }))
+        const existing = (data.projects || [])[0]
+        if (existing) {
+          setProject(normalizeProject(existing))
+          if (existing.submitted_code) setCode(existing.submitted_code)
+          if (existing.github_url) setGithub(existing.github_url)
+          if (existing.review) setReview(normalizeReview(existing.review))
+          return
+        }
+      } finally {
+        setLoading(false)
+      }
+
+      await generateProject()
+    }
+
     if (!user) return
     const loadKey = `${user.id}|${projectId}|${roadmapId}|${skill}|${level}`
     if (loadKeyRef.current === loadKey) return
     loadKeyRef.current = loadKey
 
     if (projectId) {
-      fetchExisting()
+      void fetchExisting()
     } else if (skill && roadmapId) {
       if (hasPlaceholder(skill) || hasPlaceholder(roadmapId) || !isUuid(roadmapId)) {
         setError('Invalid project URL params. Open this page from Dashboard quick actions or use a real roadmap_id UUID.')
         return
       }
-      loadOrCreateProject()
+      void loadOrCreateProject()
     }
-  }, [user, projectId, roadmapId, skill, level])
-
-  const fetchExisting = async () => {
-    setLoading(true)
-    try {
-      const res  = await fetch(`${API}/api/projects/${projectId}`)
-      const data = await res.json()
-      setProject(normalizeProject(data))
-      if (data.submitted_code) setCode(data.submitted_code)
-      if (data.github_url)     setGithub(data.github_url)
-      if (data.review)         setReview(normalizeReview(data.review))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const generateProject = async () => {
-    setLoading(true)
-    try {
-      const res  = await fetch(`${API}/api/projects/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user!.id, roadmap_id: roadmapId, skill, level }),
-      })
-      const data = await res.json()
-      if (data.success) setProject(normalizeProject(data.project))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadOrCreateProject = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`${API}/api/projects/user/${user!.id}?roadmap_id=${roadmapId}&limit=5`)
-      const data = await res.json().catch(() => ({ projects: [] }))
-      const existing = (data.projects || [])[0]
-      if (existing) {
-        setProject(normalizeProject(existing))
-        if (existing.submitted_code) setCode(existing.submitted_code)
-        if (existing.github_url) setGithub(existing.github_url)
-        if (existing.review) setReview(normalizeReview(existing.review))
-        return
-      }
-    } finally {
-      setLoading(false)
-    }
-
-    await generateProject()
-  }
+  }, [user, projectId, roadmapId, skill, level, normalizeProject, normalizeReview])
 
   const generateNewProject = async () => {
     if (!user || !skill || !roadmapId) return
@@ -207,8 +281,22 @@ export default function ProjectPage() {
       })
       const data = await res.json()
       if (data.success) {
-        setReview(normalizeReview(data.review))
+        const normalized = normalizeReview(data.review)
+        setReview(normalized)
         setTab('review')
+        void track('project_review_submitted', {
+          page: '/project',
+          event_data: {
+            project_id: project.project_id,
+            skill: project.skill,
+            level: project.level,
+            has_github_url: Boolean(github.trim()),
+            code_length: code.length,
+            score: normalized.score,
+            grade: normalized.grade,
+            xp_awarded: normalized.xp_awarded,
+          },
+        })
       }
     } finally {
       setReviewing(false)
@@ -230,11 +318,17 @@ export default function ProjectPage() {
       })
       const data = await res.json()
       if (data.success) {
-        const rawHint = data.hint || {}
+        const rawHint = asRecord(data.hint)
         setHint({
-          mentor_response: rawHint.mentor_response || rawHint.guidance || '',
-          concrete_next_step: rawHint.concrete_next_step || rawHint.next_step || '',
-          resource_suggestion: rawHint.resource_suggestion || rawHint.link || '',
+          mentor_response: typeof rawHint.mentor_response === 'string'
+            ? rawHint.mentor_response
+            : (typeof rawHint.guidance === 'string' ? rawHint.guidance : ''),
+          concrete_next_step: typeof rawHint.concrete_next_step === 'string'
+            ? rawHint.concrete_next_step
+            : (typeof rawHint.next_step === 'string' ? rawHint.next_step : ''),
+          resource_suggestion: typeof rawHint.resource_suggestion === 'string'
+            ? rawHint.resource_suggestion
+            : (typeof rawHint.link === 'string' ? rawHint.link : ''),
         })
         setQuestion('')
       }
@@ -556,5 +650,13 @@ export default function ProjectPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ProjectPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+      <ProjectPageContent />
+    </Suspense>
   )
 }

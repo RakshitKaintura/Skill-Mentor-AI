@@ -35,8 +35,18 @@ export default function QuizPage() {
     const skill      = sp.get('skill')      || ''
     const roadmapId  = sp.get('roadmap_id') || ''
     const lessonId   = sp.get('lesson_id')  || undefined
-    const difficulty = sp.get('difficulty') || 'beginner'
-    const weekNum    = parseInt(sp.get('week') || '1')
+    const rawDifficulty = (sp.get('difficulty') || 'beginner').toLowerCase()
+    const difficultyMap: Record<string, string> = {
+      some: 'beginner',
+      basic: 'beginner',
+      mid: 'intermediate',
+      expert: 'advanced',
+    }
+    const difficulty = ['beginner', 'intermediate', 'advanced'].includes(rawDifficulty)
+      ? rawDifficulty
+      : (difficultyMap[rawDifficulty] || 'beginner')
+    const rawWeek = Number(sp.get('week') || '1')
+    const weekNum = Number.isFinite(rawWeek) && rawWeek > 0 ? Math.floor(rawWeek) : 1
 
     if (user && topic && skill && roadmapId) {
       startTimeRef.current = Date.now()

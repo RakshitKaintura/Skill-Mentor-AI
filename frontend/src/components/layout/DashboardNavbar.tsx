@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useMemo, useState } from 'react'
+import NotificationBell from '@/components/NotificationBell'
 import { 
   LayoutDashboard, Map, BarChart2, Trophy, 
-  LogOut, Menu, X, Flame, Star, Settings
+  LogOut, Menu, X, Flame, Star, Settings, Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,9 +19,11 @@ interface Props {
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { href: '/daily-challenge', label: 'Daily Challenge', Icon: Flame },
   { href: '/roadmap', label: 'Roadmap', Icon: Map },
   { href: '/progress', label: 'Progress', Icon: BarChart2 },
   { href: '/achievements', label: 'Achievements', Icon: Trophy },
+  { href: '/admin', label: 'Admin', Icon: Shield },
 ]
 
 export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Props) {
@@ -31,11 +34,16 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
   const [displayName, setDisplayName] = useState(userName ?? '')
   const [displayStreak, setDisplayStreak] = useState(streakDays)
   const [displayXp, setDisplayXp] = useState(xpPoints)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
 
     const hydrateStats = async () => {
+      const { data: authData } = await supabase.auth.getUser()
+      const uid = authData.user?.id
+      if (uid && mounted) setCurrentUserId(uid)
+
       // Prefer page-provided values when present.
       if (userName) setDisplayName(userName)
       if (typeof streakDays === 'number') setDisplayStreak(streakDays)
@@ -44,8 +52,6 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
       // If all values are provided, no need to fetch.
       if (userName && streakDays > 0 && xpPoints > 0) return
 
-      const { data: authData } = await supabase.auth.getUser()
-      const uid = authData.user?.id
       if (!uid || !mounted) return
 
       const [profileRes, progressRes] = await Promise.all([
@@ -85,7 +91,7 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-1">
           {LINKS.map(({ href, label, Icon }) => {
-            const isActive = pathname === href
+            const isActive = pathname === href || pathname.startsWith(`${href}/`)
             return (
               <Link 
                 key={href} 
@@ -106,6 +112,8 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
 
         {/* User Stats & Profile */}
         <div className="flex items-center gap-3">
+          {currentUserId && <NotificationBell userId={currentUserId} />}
+
           {/* Streak Counter */}
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-bold bg-brand-yellow/10 border border-brand-yellow/20 text-brand-yellow">
             <Flame size={12} />
@@ -166,7 +174,9 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
               onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-3 rounded-sm text-sm",
-                pathname === href ? "text-brand-green bg-brand-green/5" : "text-brand-muted"
+                pathname === href || pathname.startsWith(`${href}/`)
+                  ? "text-brand-green bg-brand-green/5"
+                  : "text-brand-muted"
               )}
             >
               <Icon size={16} />

@@ -13,7 +13,9 @@ from app.core.gemini import get_gemini_client
 from app.api.routes import (
     health, roadmap, books, lessons, 
     voice, quiz, playground, progress,
-    projects, career
+    daily,
+    projects, career,
+    analytics, admin
 )
 
 # 2. Lifespan Management: Pre-warms AI resources
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
         # Pre-initialize and validate the Gemini Client
         _ = get_gemini_client()
         print("🚀 SkillMentor AI: Gemini 3.1 Flash Lite Preview Client Initialized")
-        print("✅ All 8 Agents (Roadmap to Career) are standing by.")
+        print("✅ All 11 Modules (Learning Agents + Analytics + Admin) are standing by.")
     except Exception as e:
         settings = get_settings()
         if settings.app_env == "development":
@@ -73,7 +75,9 @@ app.add_middleware(
 agent_routers = [
     health.router, roadmap.router, books.router, lessons.router, 
     voice.router, quiz.router, playground.router, progress.router,
-    projects.router, career.router
+    daily.router,
+    projects.router, career.router,
+    analytics.router, admin.router
 ]
 
 for router in agent_routers:
@@ -87,12 +91,13 @@ async def root():
     return {
         "name": "SkillMentor AI",
         "version": "4.0.0",
-        "status": "Operational - All 8 Agents Active",
+        "status": "Operational - Learning, Analytics, and Admin Active",
         "engine": "Gemini 3.1 Flash Lite Preview",
         "agents": [
             "Roadmap Architect", "Lesson Teacher", "Code Coach", 
             "Quiz Examiner", "Doubt Solver", "Progress Tracker",
-            "Project Mentor", "Career Prep"
+            "Daily Challenge Coach", "Project Mentor", "Career Prep",
+            "Analytics Tracker", "Admin Insights"
         ],
         "capabilities": [
             "Dynamic Curriculum Generation",
@@ -101,6 +106,8 @@ async def root():
             "Adaptive Assessments",
             "Socratic Code Playground",
             "Industry Project Mentorship",
-            "AI Career Coaching & Verified Certification"
+            "AI Career Coaching & Verified Certification",
+            "Event Analytics & Engagement Metrics",
+            "Admin Dashboard APIs"
         ]
     }

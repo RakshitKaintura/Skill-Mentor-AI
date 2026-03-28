@@ -1,10 +1,12 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Quiz, QuizResult } from '@/types/week3'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export function useQuiz() {
+  const { track } = useAnalytics()
   const [quiz, setQuiz]         = useState<Quiz | null>(null)
   const [result, setResult]     = useState<QuizResult | null>(null)
   const [loading, setLoading]   = useState(false)
@@ -13,8 +15,17 @@ export function useQuiz() {
   const [timeLeft, setTimeLeft] = useState(0)
   const [answers, setAnswers]   = useState<Record<number, string>>({})
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const submitQuizRef = useRef<(quizId: string, userId: string, timeTaken: number) => Promise<void>>(async () => {})
 
   const getErrorMessage = (e: unknown) => (e instanceof Error ? e.message : 'Unexpected error')
+  const asErrorMessage = (detail: unknown, fallback: string) => {
+    if (typeof detail === 'string' && detail.trim()) return detail
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0] as { msg?: string }
+      if (first?.msg) return first.msg
+    }
+    return fallback
+  }
 
   const normalizeQuiz = (raw: Record<string, unknown>): Quiz => {
     const questions = Array.isArray(raw.questions) ? (raw.questions as Quiz['questions']) : []
@@ -34,6 +45,20 @@ export function useQuiz() {
       completed: Boolean(raw.completed),
     }
   }
+
+  const startTimer = useCallback((seconds: number, quizId: string, userId: string) => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    let remaining = seconds
+    timerRef.current = setInterval(() => {
+      remaining -= 1
+      setTimeLeft(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current!)
+        // Auto-submit with current answers
+        void submitQuizRef.current(quizId, userId, 0)
+      }
+    }, 1000)
+  }, [])
 
   const generateQuiz = useCallback(async (params: {
     user_id: string
@@ -56,6 +81,7 @@ export function useQuiz() {
         body: JSON.stringify(params),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(asErrorMessage(data?.detail, 'Failed to generate quiz'))
       if (!data.success) throw new Error(data.detail || 'Failed to generate quiz')
       setQuiz(data.quiz)
       setTimeLeft(data.quiz.time_limit_secs)
@@ -65,21 +91,7 @@ export function useQuiz() {
     } finally {
       setLoading(false)
     }
-  }, [])
-
-  const startTimer = (seconds: number, quizId: string, userId: string) => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    let remaining = seconds
-    timerRef.current = setInterval(() => {
-      remaining -= 1
-      setTimeLeft(remaining)
-      if (remaining <= 0) {
-        clearInterval(timerRef.current!)
-        // Auto-submit with current answers
-        submitQuiz(quizId, userId, 0)
-      }
-    }, 1000)
-  }
+  }, [startTimer])
 
   const answerQuestion = useCallback((questionId: number, answer: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }))
@@ -109,12 +121,27 @@ export function useQuiz() {
       const data = await res.json()
       if (!data.success) throw new Error(data.detail || 'Failed to submit quiz')
       setResult(data.result)
+      void track('quiz_submitted', {
+        event_data: {
+          quiz_id: quizId,
+          time_taken: timeTaken,
+          total_answers: userAnswers.length,
+          score_percent: data.result?.score_percent,
+          passed: data.result?.passed,
+          xp_earned: data.result?.xp_earned,
+        },
+        page: '/quiz',
+      })
     } catch (e: unknown) {
       setError(getErrorMessage(e))
     } finally {
       setSubmitting(false)
     }
-  }, [answers])
+  }, [answers, track])
+
+  useEffect(() => {
+    submitQuizRef.current = submitQuiz
+  }, [submitQuiz])
 
   const loadQuizById = useCallback(async (quizId: string, userId: string) => {
     setLoading(true)
@@ -141,7 +168,7 @@ export function useQuiz() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [startTimer])
 
   return {
     quiz, result, loading, submitting, error,

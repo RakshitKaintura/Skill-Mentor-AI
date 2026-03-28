@@ -23,6 +23,23 @@ def get_gemini_client():
     return get_ai_client()
 
 
+def get_gemini_model(system_instruction: str):
+    """Compatibility wrapper for older agent code expecting model.generate_content()."""
+    settings = get_settings()
+    client = get_ai_client()
+    config = get_mentor_model_config(system_instruction)
+
+    class _GeminiCompatModel:
+        def generate_content(self, prompt: str):
+            return client.models.generate_content(
+                model=settings.gemini_model,
+                contents=prompt,
+                config=config,
+            )
+
+    return _GeminiCompatModel()
+
+
 def get_mentor_model_config(system_instruction: str):
     """Returns a standard config for the Skill Mentor agent."""
     return types.GenerateContentConfig(

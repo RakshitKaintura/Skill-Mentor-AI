@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
+import { Suspense } from 'react'
 import { Syne, DM_Mono } from 'next/font/google'
 import { Toaster } from 'sonner'
+import AnalyticsTracker from '@/components/AnalyticsTracker'
 import './globals.css'
 
 // 1. Optimized font loading
@@ -52,6 +54,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="bg-brand-bg text-brand-text font-mono antialiased selection:bg-brand-green selection:text-brand-bg">
+        <Suspense fallback={null}>
+          <AnalyticsTracker />
+        </Suspense>
+
         {/* Main Application Shell */}
         <main className="relative z-10 min-h-screen">
           {children}

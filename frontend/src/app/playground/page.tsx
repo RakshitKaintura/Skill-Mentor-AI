@@ -1,12 +1,12 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { usePlayground } from '@/hooks/usePlayground'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 
-export default function PlaygroundPage() {
+function PlaygroundPageContent() {
   const params  = useSearchParams()
   const router  = useRouter()
   const { user } = useAuth()
@@ -31,7 +31,7 @@ export default function PlaygroundPage() {
     if (user && topic && skill && roadmapId && lessonId) {
       generateChallenge({ user_id: user.id, roadmap_id: roadmapId, lesson_id: lessonId, topic, skill, difficulty, language })
     }
-  }, [user])
+  }, [user, topic, skill, roadmapId, lessonId, difficulty, language, generateChallenge])
 
   const visibleTab = result ? 'result' : hint ? 'hints' : activeTab
 
@@ -301,5 +301,13 @@ export default function PlaygroundPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PlaygroundPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+      <PlaygroundPageContent />
+    </Suspense>
   )
 }
