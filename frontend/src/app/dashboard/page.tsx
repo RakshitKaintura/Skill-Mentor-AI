@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { ArrowRight, BookOpen, Mic, Flame, Star, Map, Clock, Target } from 'lucide-react'
 import type { Roadmap, UserProgress } from '@/types'
 import { cn } from '@/lib/utils'
+import Card from '@/components/ui/Card'
+import SectionContainer from '@/components/ui/SectionContainer'
+import { buttonClassName } from '@/components/ui/Button'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -55,87 +58,87 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen page-tone-warm">
       <DashboardNavbar userName={profile?.full_name ?? ''} streakDays={streakDays} xpPoints={xpPoints} />
 
-      <div className="max-w-5xl mx-auto px-5 py-10 animate-fade-up">
+      <SectionContainer className="py-8 md:py-10">
 
         {/* Greeting Section */}
-        <div className="mb-10">
-          <p className="text-sm mb-1 text-brand-muted">
+        <div className="mb-8">
+          <p className="mb-2 text-sm text-[var(--color-app-text-secondary)]">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
-          <h1 className="font-display font-black text-4xl text-brand-text tracking-tighter">
-            {greeting()}, {firstName} 👋
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            {greeting()}, {firstName}
           </h1>
           {roadmap && (
-            <p className="mt-2 text-sm text-brand-muted">
-              Learning <span className="text-brand-green font-bold">{roadmap.skill}</span>
+            <p className="mt-2 text-base text-[var(--color-app-text-secondary)]">
+              Learning <span className="font-semibold text-[var(--color-app-primary)]">{roadmap.skill}</span>
               {' '}· Week {currentWeek} of {totalWeeks}
             </p>
           )}
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px mb-8 bg-brand-border rounded-sm overflow-hidden border border-brand-border">
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
-            { label: 'Lessons Done', value: lessonsCompleted, color: 'text-brand-green', Icon: BookOpen },
-            { label: 'Day Streak', value: streakDays, color: 'text-brand-yellow', Icon: Flame },
-            { label: 'XP Points', value: xpPoints, color: 'text-brand-purple', Icon: Star },
-            { label: 'Study Hours', value: Math.round(studyMinutes / 60), color: 'text-brand-blue', Icon: Clock },
+            { label: 'Lessons Done', value: lessonsCompleted, Icon: BookOpen, tone: 'bg-[var(--color-app-surface-cool)]', icon: 'text-[#1a73e8]' },
+            { label: 'Day Streak', value: streakDays, Icon: Flame, tone: 'bg-[var(--color-app-surface-mint)]', icon: 'text-[#188038]' },
+            { label: 'XP Points', value: xpPoints, Icon: Star, tone: 'bg-[var(--color-app-surface-warm)]', icon: 'text-[#f9ab00]' },
+            { label: 'Study Hours', value: Math.round(studyMinutes / 60), Icon: Clock, tone: 'bg-[var(--color-app-surface-lavender)]', icon: 'text-[#7e57c2]' },
           ].map((item) => (
-            <div key={item.label} className="py-6 text-center bg-brand-surface">
-              <item.Icon size={14} className={cn("mx-auto mb-2", item.color)} />
-              <div className={cn("font-display font-black text-3xl mb-1", item.color)}>{item.value}</div>
-              <div className="text-[10px] tracking-widest uppercase text-brand-muted font-bold">{item.label}</div>
-            </div>
+            <Card key={item.label} className={cn('text-center', item.tone)}>
+              <item.Icon size={16} className={cn('mx-auto mb-2', item.icon)} />
+              <div className="mb-1 text-3xl font-semibold text-[var(--color-app-text-primary)]">{item.value}</div>
+              <div className="text-xs text-[var(--color-app-text-secondary)]">{item.label}</div>
+            </Card>
           ))}
         </div>
 
         {/* Continue Today Hero Card */}
         {roadmap && (
-          <div className="glass-card p-6 mb-6 border-brand-green/20 bg-linear-to-br from-brand-green/4 to-transparent">
+          <Card className="mb-6 bg-[var(--color-app-surface-cool)]">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-[10px] font-bold tracking-widest uppercase mb-2 text-brand-green">CONTINUE TODAY</p>
-                <h2 className="font-display font-bold text-xl mb-1 tracking-tight text-brand-text">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-app-primary)]">Continue today</p>
+                <h2 className="mb-1 text-xl font-semibold tracking-tight text-[var(--color-app-text-primary)]">
                   {roadmap.current_topic}
                 </h2>
-                <p className="text-xs text-brand-muted">
+                <p className="text-sm text-[var(--color-app-text-secondary)]">
                   {roadmap.current_phase} · Week {currentWeek}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <Link href="/lesson/current"
-                  className="flex items-center gap-2 px-5 py-3 bg-brand-green text-brand-bg rounded-sm font-display font-bold text-sm hover:scale-[1.02] transition-transform">
+                  className={buttonClassName()}>
                   <BookOpen size={14} /> Start Lesson
                 </Link>
               </div>
             </div>
 
             <div className="mt-6">
-              <div className="flex justify-between text-xs mb-1.5 text-brand-muted">
+              <div className="mb-2 flex justify-between text-sm text-[var(--color-app-text-secondary)]">
                 <span>Overall progress</span>
-                <span className="text-brand-green font-bold">{weekProgress}%</span>
+                <span className="font-semibold text-[var(--color-app-primary)]">{weekProgress}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-brand-border">
-                <div className="h-1.5 rounded-full transition-all duration-700 bg-linear-to-r from-brand-green to-brand-blue"
+              <div className="h-2 rounded-full bg-[var(--color-app-bg)]">
+                <div className="h-2 rounded-full bg-[var(--color-app-primary)] transition-all duration-700"
                   style={{ width: `${weekProgress}%` }} />
               </div>
             </div>
-          </div>
+          </Card>
         )}
 
         <div className="grid md:grid-cols-2 gap-6">
 
           {/* Roadmap Phases Card */}
-          <div className="glass-card p-6">
+          <Card className="bg-[var(--color-app-surface-warm)]">
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2 text-brand-text">
-                <Map size={16} className="text-brand-blue" />
-                <h3 className="font-display font-bold text-base">Your Roadmap</h3>
+              <div className="flex items-center gap-2 text-[var(--color-app-text-primary)]">
+                <Map size={16} className="text-[var(--color-app-primary)]" />
+                <h3 className="text-lg font-semibold">Your Roadmap</h3>
               </div>
-              <Link href="/roadmap" className="text-xs text-brand-blue hover:underline">
+              <Link href="/roadmap" className="text-sm text-[var(--color-app-primary)] hover:underline">
                 Full View →
               </Link>
             </div>
@@ -149,25 +152,25 @@ export default async function DashboardPage() {
                 return (
                   <div key={i} className="flex items-center gap-3">
                     <div className={cn(
-                      "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border transition-colors",
+                        "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
                       phase.completed 
-                        ? "bg-brand-green border-brand-green text-brand-bg" 
+                          ? "border-[var(--color-app-primary)] bg-[var(--color-app-primary)] text-white" 
                         : isCurrent 
-                          ? "bg-brand-surface border-brand-muted text-brand-text" 
-                          : "bg-brand-surface2 border-brand-border text-brand-muted"
+                            ? "border-[var(--color-app-primary)] bg-[#e8f0fe] text-[var(--color-app-primary)]" 
+                            : "border-[var(--color-app-border)] bg-[var(--color-app-bg)] text-[var(--color-app-text-secondary)]"
                     )}>
                       {phase.completed ? '✓' : i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold truncate text-brand-text">{phase.name}</p>
+                          <p className="truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{phase.name}</p>
                         {isCurrent && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-brand-green/10 text-brand-green font-bold uppercase">
+                            <span className="rounded bg-[#e8f0fe] px-2 py-0.5 text-xs font-semibold uppercase text-[var(--color-app-primary)]">
                             NOW
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-brand-muted font-mono">
+                        <p className="text-xs text-[var(--color-app-text-secondary)]">
                         Wk {startWk}–{endWk} · {phase.topics.length} topics
                       </p>
                     </div>
@@ -175,16 +178,16 @@ export default async function DashboardPage() {
                 )
               })}
             </div>
-          </div>
+            </Card>
 
           {/* Recent Lessons Card */}
-          <div className="glass-card p-6">
+            <Card className="bg-[var(--color-app-surface-lavender)]">
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2 text-brand-text">
-                <BookOpen size={16} className="text-brand-purple" />
-                <h3 className="font-display font-bold text-base">Recent Lessons</h3>
+                <div className="flex items-center gap-2 text-[var(--color-app-text-primary)]">
+                  <BookOpen size={16} className="text-[var(--color-app-primary)]" />
+                  <h3 className="text-lg font-semibold">Recent Lessons</h3>
               </div>
-              <Link href="/lesson" className="text-xs text-brand-purple hover:underline">
+                <Link href="/lesson" className="text-sm text-[var(--color-app-primary)] hover:underline">
                 All Lessons →
               </Link>
             </div>
@@ -194,16 +197,16 @@ export default async function DashboardPage() {
                   <Link 
                     key={lesson.id} 
                     href={`/lesson/${lesson.id}`}
-                    className="flex items-center gap-3 py-2 border-b border-brand-border last:border-0 hover:bg-white/2 transition-colors rounded-sm px-2 -mx-2"
+                      className="-mx-2 flex items-center gap-3 rounded-lg border-b border-[var(--color-app-border)] px-2 py-3 last:border-0 transition-colors hover:bg-[var(--color-app-bg)]"
                   >
                     <div className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-[10px]",
-                      lesson.completed ? "bg-brand-green/10 text-brand-green" : "bg-brand-blue/10 text-brand-blue"
+                        "flex h-7 w-7 items-center justify-center rounded-full text-xs",
+                        lesson.completed ? "bg-[#e6f4ea] text-[#188038]" : "bg-[#e8f0fe] text-[var(--color-app-primary)]"
                     )}>
                       {lesson.completed ? '✓' : '▶'}
                     </div>
-                    <p className="text-xs flex-1 truncate font-bold text-brand-text">{lesson.topic}</p>
-                    <p className="text-[10px] text-brand-muted uppercase font-bold">
+                      <p className="flex-1 truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{lesson.topic}</p>
+                      <p className="text-xs text-[var(--color-app-text-secondary)]">
                       {new Date(lesson.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </Link>
@@ -211,38 +214,37 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <BookOpen size={28} className="mx-auto mb-3 text-brand-muted" />
-                <p className="text-sm mb-4 text-brand-muted">No lessons yet</p>
+                  <BookOpen size={28} className="mx-auto mb-3 text-[var(--color-app-text-secondary)]" />
+                  <p className="mb-4 text-sm text-[var(--color-app-text-secondary)]">No lessons yet</p>
                 <Link href="/lesson/current"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-brand-bg rounded-sm text-xs font-bold hover:scale-105 transition-transform">
+                    className={buttonClassName()}>
                   Start First Lesson <ArrowRight size={11} />
                 </Link>
               </div>
             )}
-          </div>
+            </Card>
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { href: '/daily-challenge', Icon: Flame, color: 'text-brand-yellow', label: 'Daily Challenge' },
-            { href: `/project${week4Query}`, Icon: Target, color: 'text-brand-yellow', label: 'Project Mentor' },
-            { href: `/interview${week4Query}`, Icon: Mic, color: 'text-brand-blue', label: 'Mock Interview' },
-            { href: `/career${week4Query}`, Icon: Star, color: 'text-brand-green', label: 'Career Hub' },
-            { href: `/resume${week4Query}`, Icon: BookOpen, color: 'text-brand-purple', label: 'Resume ATS Score' },
+              { href: `/project${week4Query}`, Icon: Target, label: 'Project Mentor', tone: 'bg-[var(--color-app-surface-mint)]', border: 'border-[#b7e1c3]', icon: 'text-[#188038]', hover: 'group-hover:text-[#188038]' },
+              { href: `/interview${week4Query}`, Icon: Mic, label: 'Mock Interview', tone: 'bg-[var(--color-app-surface-cool)]', border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
+              { href: `/career${week4Query}`, Icon: Star, label: 'Career Hub', tone: 'bg-[var(--color-app-surface-warm)]', border: 'border-[#f5d59a]', icon: 'text-[#f9ab00]', hover: 'group-hover:text-[#b06000]' },
+              { href: `/resume${week4Query}`, Icon: BookOpen, label: 'Resume ATS Score', tone: 'bg-[var(--color-app-surface-lavender)]', border: 'border-[#d4c7ff]', icon: 'text-[#7e57c2]', hover: 'group-hover:text-[#7e57c2]' },
           ].map((action) => (
             <Link 
               key={action.href} 
               href={action.href}
-              className="glass-card flex items-center gap-3 p-4 transition-all hover:border-brand-muted hover:-translate-y-0.5 group"
+                className={cn('group flex items-center gap-3 rounded-xl border p-4 shadow-sm transition-all hover:translate-y-[-1px]', action.tone, action.border)}
             >
-              <action.Icon size={15} className={cn("transition-colors", action.color)} />
-              <span className="text-xs font-display font-bold text-brand-text group-hover:text-brand-green transition-colors">{action.label}</span>
+                <action.Icon size={15} className={action.icon} />
+                <span className={cn('text-sm font-semibold text-[var(--color-app-text-primary)] transition-colors', action.hover)}>{action.label}</span>
             </Link>
           ))}
         </div>
 
-      </div>
+        </SectionContainer>
     </div>
   )
 }

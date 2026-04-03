@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect }     from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Link from 'next/link'
-import { CheckCircle, Lock, Play, Map, Target, Trophy } from 'lucide-react'
+import { Play, Map, Target, Trophy } from 'lucide-react'
 import type { Roadmap } from '@/types'
+import { cn } from '@/lib/utils'
+import Card from '@/components/ui/Card'
+import SectionContainer from '@/components/ui/SectionContainer'
 
 export default async function RoadmapPage() {
   const supabase = await createClient()
@@ -25,214 +28,140 @@ export default async function RoadmapPage() {
     .from('lessons').select('topic, completed').eq('user_id', user.id).eq('completed', true)
 
   const completedTopics = new Set((lessons ?? []).map((l: { topic: string }) => l.topic))
-  const phases          = (roadmap?.phases ?? []) as Roadmap['phases']
-  const totalWeeks      = roadmap?.total_weeks ?? 12
+  const phases = (roadmap?.phases ?? []) as Roadmap['phases']
+  const totalWeeks = roadmap?.total_weeks ?? 12
+  const currentWeek = roadmap?.current_week ?? 1
 
   return (
-    <div className="min-h-screen">
-      <DashboardNavbar
-        userName={profile?.full_name ?? ''}
-        streakDays={progress?.streak_days ?? 0}
-        xpPoints={progress?.xp_points ?? 0}
-      />
+    <div className="min-h-screen page-tone-cool text-[var(--color-app-text-primary)]">
+      <DashboardNavbar userName={profile?.full_name ?? ''} streakDays={progress?.streak_days ?? 0} xpPoints={progress?.xp_points ?? 0} />
 
-      <div className="max-w-5xl mx-auto px-5 py-10">
-
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
+      <SectionContainer className="py-8">
+        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Map size={16} style={{ color: '#4FFFA0' }} />
-              <span className="text-xs tracking-widest uppercase" style={{ color: '#4FFFA0' }}>
-                Learning Roadmap
-              </span>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--color-app-primary)] mb-1">
+              <Map size={16} />
+              Roadmap
             </div>
-            <h1 className="font-display font-black text-4xl" style={{ letterSpacing: '-1.5px' }}>
-              {roadmap?.skill ?? 'Your Roadmap'}
-            </h1>
-            <p className="mt-2 text-sm" style={{ color: '#6B7A99' }}>
-              {roadmap?.total_weeks} week journey · {phases.length} phases ·{' '}
-              Week {roadmap?.current_week ?? 1} of {roadmap?.total_weeks ?? 12}
+            <h1 className="text-4xl font-semibold">{roadmap?.skill ?? 'Your Roadmap'}</h1>
+            <p className="text-base text-[var(--color-app-text-secondary)] mt-1">
+              {roadmap?.total_weeks} week journey · {phases.length} phases · Week {currentWeek} of {totalWeeks}
             </p>
           </div>
-          <Link href="/lesson/current"
-            className="flex items-center gap-2 px-5 py-3 rounded-sm font-display font-bold text-sm"
-            style={{ background: '#4FFFA0', color: '#080B14' }}>
+          <Link href="/lesson/current" className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-app-primary)] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1765cc]">
             <Play size={14} /> Continue Learning
           </Link>
         </div>
 
-        {/* Overall progress bar */}
-        {roadmap && (
-          <div className="glass-card p-5 mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold" style={{ color: '#6B7A99' }}>OVERALL PROGRESS</span>
-              <span className="text-sm font-bold" style={{ color: '#4FFFA0' }}>
-                Week {roadmap.current_week}/{roadmap.total_weeks}
-              </span>
-            </div>
-            <div className="h-2 rounded-full" style={{ background: '#1E2A42' }}>
-              <div className="h-2 rounded-full transition-all duration-700"
-                style={{
-                  width: `${Math.round((roadmap.current_week / totalWeeks) * 100)}%`,
-                  background: 'linear-gradient(90deg, #4FFFA0, #5B8EFF)',
-                }} />
-            </div>
-            <div className="flex justify-between mt-2">
-              <span className="text-xs" style={{ color: '#6B7A99' }}>Start</span>
-              <span className="text-xs" style={{ color: '#6B7A99' }}>Job-Ready</span>
-            </div>
+        <Card className="mb-6 bg-[var(--color-app-surface-cool)]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-xs uppercase tracking-widest font-semibold text-[var(--color-app-text-secondary)]">Overall Progress</div>
+            <div className="text-sm font-semibold text-[var(--color-app-primary)]">Week {roadmap?.current_week ?? 0}/{totalWeeks}</div>
           </div>
-        )}
+          <div className="h-2 w-full rounded-full bg-[var(--color-app-border)] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#4FFFA0] to-[#5B8EFF]"
+              style={{ width: `${Math.round(((roadmap?.current_week ?? 0) / totalWeeks) * 100)}%` }}
+            />
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-[var(--color-app-text-secondary)]">
+            <span>Start</span>
+            <span>Job-Ready</span>
+          </div>
+        </Card>
 
-        {/* Phases */}
-        <div className="flex flex-col gap-6">
+        <div className="grid gap-6">
           {phases.map((phase, phaseIdx) => {
-            const isCurrentPhase = phase.name === roadmap?.current_phase
-            const isCompleted    = phase.completed
-            const isLocked       = !isCompleted && !isCurrentPhase &&
-                                   phaseIdx > phases.findIndex(p => p.name === roadmap?.current_phase)
-            const phaseWeeks      = Array.isArray(phase.weeks) ? phase.weeks : []
-            const phaseWeekStart  = phaseWeeks[0] ?? 1
-            const phaseWeekEnd    = phaseWeeks[phaseWeeks.length - 1] ?? phaseWeekStart
-
-            const phaseColors = ['#4FFFA0', '#5B8EFF', '#C77DFF', '#FFD166']
-            const color       = phaseColors[phaseIdx % phaseColors.length]
+            const isCurrent = phase.name === roadmap?.current_phase
+            const isCompleted = phase.completed
+            const isLocked = !isCompleted && !isCurrent && phaseIdx > phases.findIndex((p) => p.name === roadmap?.current_phase)
+            const colorClasses = ['text-[#4FFFA0]', 'text-[#5B8EFF]', 'text-[#C77DFF]', 'text-[#FFD166]']
+            const color = colorClasses[phaseIdx % colorClasses.length]
+            const phaseWeeks = Array.isArray(phase.weeks) ? phase.weeks : []
+            const phaseStart = phaseWeeks[0] ?? 1
+            const phaseEnd = phaseWeeks[phaseWeeks.length - 1] ?? phaseStart
 
             return (
-              <div key={phase.phase}
-                className="glass-card overflow-hidden transition-all duration-200"
-                style={{
-                  borderColor: isCurrentPhase ? color + '40' : isCompleted ? 'rgba(79,255,160,0.2)' : '#1E2A42',
-                  opacity: isLocked ? 0.5 : 1,
-                }}>
-
-                {/* Phase header */}
-                <div className="flex items-center justify-between p-6 pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center font-display font-black text-lg"
-                      style={{
-                        background: isCompleted ? '#4FFFA0' : isCurrentPhase ? color + '20' : '#141B2D',
-                        color:      isCompleted ? '#080B14' : isCurrentPhase ? color        : '#6B7A99',
-                        border:     `2px solid ${isCompleted ? '#4FFFA0' : isCurrentPhase ? color : '#1E2A42'}`,
-                      }}>
+              <Card key={phase.phase} className={cn('bg-[var(--color-app-surface-mint)]', isLocked ? 'opacity-70' : '')}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        'flex h-11 w-11 items-center justify-center rounded-full border',
+                        isCompleted ? 'bg-[#4FFFA0]/20 border-[#4FFFA0] text-[#080B14]' : isCurrent ? 'bg-[#5B8EFF]/20 border-[#5B8EFF] ' + color : 'bg-[var(--color-app-bg)] border-[var(--color-app-border)] text-[var(--color-app-text-secondary)]'
+                      )}
+                    >
                       {isCompleted ? '✓' : phase.phase}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="font-display font-bold text-lg">{phase.name}</h2>
-                        {isCurrentPhase && (
-                          <span className="text-xs px-2 py-0.5 rounded-sm font-bold"
-                            style={{ background: color + '15', color, border: `1px solid ${color}30` }}>
-                            CURRENT
-                          </span>
-                        )}
-                        {isCompleted && (
-                          <span className="text-xs px-2 py-0.5 rounded-sm font-bold"
-                            style={{ background: 'rgba(79,255,160,0.1)', color: '#4FFFA0', border: '1px solid rgba(79,255,160,0.2)' }}>
-                            COMPLETED
-                          </span>
-                        )}
-                        {isLocked && (
-                          <span className="text-xs px-2 py-0.5 rounded-sm"
-                            style={{ background: '#141B2D', color: '#6B7A99', border: '1px solid #1E2A42' }}>
-                            LOCKED
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs mt-0.5" style={{ color: '#6B7A99' }}>
-                        Weeks {phaseWeekStart}–{phaseWeekEnd} · {phase.topics.length} topics
-                      </p>
+                      <h2 className="text-lg font-semibold">{phase.name}</h2>
+                      <p className="text-xs text-[var(--color-app-text-secondary)]">Weeks {phaseStart}-{phaseEnd} · {phase.topics.length} topics</p>
                     </div>
                   </div>
-                  {isLocked && <Lock size={16} style={{ color: '#6B7A99' }} />}
+                  <div className="flex items-center gap-2">
+                    {isCurrent && <span className="rounded-full bg-[#5B8EFF]/20 px-2 py-0.5 text-xs font-semibold text-[#5B8EFF]">Current</span>}
+                    {isCompleted && <span className="rounded-full bg-[#e6f4ea] px-2 py-0.5 text-xs font-semibold text-[#188038]">Completed</span>}
+                    {isLocked && <span className="rounded-full bg-[var(--color-app-border)] px-2 py-0.5 text-xs font-semibold text-[var(--color-app-text-secondary)]">Locked</span>}
+                  </div>
                 </div>
 
-                {/* Phase description */}
-                <div className="px-6 pb-4">
-                  <p className="text-sm" style={{ color: '#6B7A99' }}>{phase.description}</p>
-                </div>
+                <p className="text-sm text-[var(--color-app-text-secondary)] mb-4">{phase.description}</p>
 
-                {/* Topics grid */}
-                <div className="px-6 pb-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {phase.topics.map((topic: string, i: number) => {
-                      const done    = completedTopics.has(topic)
-                      const current = topic === roadmap?.current_topic
-
-                      return (
-                        <div key={i}
-                          className="flex items-center gap-2 px-3 py-2.5 rounded-sm text-xs transition-all"
-                          style={{
-                            background: done    ? 'rgba(79,255,160,0.06)'  :
-                                        current ? color + '10' : '#141B2D',
-                            border:     `1px solid ${done ? 'rgba(79,255,160,0.2)' : current ? color + '30' : '#1E2A42'}`,
-                            color:      done    ? '#4FFFA0' :
-                                        current ? color     : '#6B7A99',
-                          }}>
-                          <span>
-                            {done ? '✓' : current ? '▶' : String(i + 1).padStart(2, '0')}
-                          </span>
-                          <span className="truncate font-display font-bold">{topic}</span>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {phase.topics.map((topic, idx) => {
+                    const done = completedTopics.has(topic)
+                    const current = topic === roadmap?.current_topic
+                    return (
+                      <div
+                        key={`${phase.phase}-${idx}`}
+                        className={cn(
+                          'rounded-lg border p-3 text-xs font-semibold',
+                          done
+                            ? 'border-[#4FFFA0]/30 bg-[#4FFFA0]/10 text-[#4FFFA0]'
+                            : current
+                              ? 'border-[#5B8EFF]/30 bg-[#5B8EFF]/10 text-[#5B8EFF]'
+                              : 'border-[var(--color-app-border)] bg-[var(--color-app-surface)] text-[var(--color-app-text-secondary)]'
+                        )}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>{done ? '✓' : current ? '▶' : String(idx + 1).padStart(2, '0')}</span>
+                          <span className="truncate">{topic}</span>
                         </div>
-                      )
-                    })}
-                  </div>
+                      </div>
+                    )
+                  })}
                 </div>
 
-                {/* Project */}
-                <div className="mx-6 mb-5 p-4 rounded-sm"
-                  style={{ background: color + '08', border: `1px solid ${color}20` }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Target size={12} style={{ color }} />
-                    <span className="text-xs font-bold" style={{ color }}>PHASE PROJECT</span>
+                {phase.project && (
+                  <div className="mt-4 rounded-lg bg-[var(--color-app-surface-warm)] border border-[var(--color-app-border)] p-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-app-primary)]">
+                      <Target size={12} /> Phase Project
+                    </div>
+                    <p className="text-sm text-[var(--color-app-text-secondary)] mt-1">{phase.project}</p>
                   </div>
-                  <p className="text-sm" style={{ color: '#C4CFEA' }}>{phase.project}</p>
-                </div>
-              </div>
+                )}
+              </Card>
             )
           })}
         </div>
 
-        {/* Final project + job readiness */}
         {roadmap?.final_project && (
-          <div className="mt-8 glass-card p-6" style={{ borderColor: 'rgba(255,209,102,0.3)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Trophy size={18} style={{ color: '#FFD166' }} />
-              <h3 className="font-display font-bold text-base" style={{ color: '#FFD166' }}>
-                Final Capstone Project
-              </h3>
+          <Card className="mt-6 bg-[var(--color-app-surface-warm)] border-[#f9ab00]/30">
+            <div className="flex items-center gap-2 mb-2 text-[var(--color-app-primary)]">
+              <Trophy size={18} />
+              <h2 className="text-lg font-semibold">Final Capstone Project</h2>
             </div>
-            <p className="text-sm mb-5" style={{ color: '#C4CFEA' }}>{roadmap.final_project}</p>
-
-            {Array.isArray(roadmap.job_readiness_checklist) && roadmap.job_readiness_checklist.length > 0 && (
-              <>
-                <p className="text-xs font-bold mb-3" style={{ color: '#6B7A99' }}>JOB READINESS CHECKLIST</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(roadmap.job_readiness_checklist as string[]).map((item: string, i: number) => (
-                    <div key={i} className="flex items-center gap-2 text-xs py-1" style={{ color: '#6B7A99' }}>
-                      <CheckCircle size={12} style={{ color: '#FFD166', flexShrink: 0 }} />
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+            <p className="text-sm text-[var(--color-app-text-secondary)]">{roadmap.final_project}</p>
+          </Card>
         )}
 
-        {/* Daily schedule */}
         {roadmap?.daily_schedule && (
-          <div className="mt-4 glass-card px-5 py-4 flex items-start gap-3"
-            style={{ borderColor: 'rgba(91,142,255,0.2)' }}>
-            <span style={{ color: '#5B8EFF' }}>📅</span>
-            <div>
-              <p className="text-xs font-bold mb-0.5" style={{ color: '#5B8EFF' }}>YOUR DAILY SCHEDULE</p>
-              <p className="text-sm" style={{ color: '#6B7A99' }}>{roadmap.daily_schedule}</p>
-            </div>
-          </div>
+          <Card className="mt-6 bg-[var(--color-app-surface-lavender)]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-app-primary)] mb-1">📅 Daily Schedule</div>
+            <p className="text-sm text-[var(--color-app-text-secondary)]">{roadmap.daily_schedule}</p>
+          </Card>
         )}
-      </div>
+      </SectionContainer>
     </div>
   )
 }

@@ -1,23 +1,35 @@
 @import "tailwindcss";
 
 @theme {
+  /* Material-inspired app palette */
+  --color-app-primary: #1a73e8;
+  --color-app-bg: #eef2f7;
+  --color-app-surface: #f8fbff;
+  --color-app-surface-cool: #e8f1ff;
+  --color-app-surface-mint: #e6f7ee;
+  --color-app-surface-warm: #ffefd8;
+  --color-app-surface-lavender: #ece6ff;
+  --color-app-text-primary: #202124;
+  --color-app-text-secondary: #5f6368;
+  --color-app-border: #e1e6ed;
+
   /* Brand Identity - Tailwind v4 Theme Variables */
-  --color-brand-bg: #080B14;
-  --color-brand-surface: #0E1420;
-  --color-brand-surface2: #141B2D;
-  --color-brand-border: #1E2A42;
-  --color-brand-green: #4FFFA0;
-  --color-brand-blue: #5B8EFF;
+  --color-brand-bg: var(--color-app-bg);
+  --color-brand-surface: var(--color-app-surface);
+  --color-brand-surface2: color-mix(in oklab, var(--color-app-surface) 85%, var(--color-app-primary) 15%);
+  --color-brand-border: var(--color-app-border);
+  --color-brand-green: #188038;
+  --color-brand-blue: var(--color-app-primary);
   --color-brand-purple: #C77DFF;
-  --color-brand-yellow: #FFD166;
-  --color-brand-red: #FF6B6B;
-  --color-brand-muted: #6B7A99;
-  --color-brand-text: #E8EDF8;
+  --color-brand-yellow: #f9ab00;
+  --color-brand-red: #d93025;
+  --color-brand-muted: var(--color-app-text-secondary);
+  --color-brand-text: var(--color-app-text-primary);
 
   /* Typography */
-  --font-sans: var(--font-syne), ui-sans-serif, system-ui;
-  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
-  --font-display: var(--font-syne), sans-serif;
+  --font-sans: var(--font-inter), Inter, Roboto, ui-sans-serif, system-ui;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-display: var(--font-inter), Inter, Roboto, sans-serif;
 
   /* Animations & Keyframes */
   --animate-fade-up: fade-up 0.5s ease forwards;
@@ -53,23 +65,37 @@
   }
 
   body {
-    background: var(--color-brand-bg);
-    color: var(--color-brand-text);
-    font-family: var(--font-mono);
+    background:
+      radial-gradient(1200px 420px at 10% -10%, color-mix(in oklab, var(--color-app-primary) 10%, transparent), transparent 55%),
+      radial-gradient(1000px 320px at 90% -20%, color-mix(in oklab, var(--color-app-primary) 8%, transparent), transparent 60%),
+      var(--color-app-bg);
+    --card-accent-start: #1a73e8;
+    --card-accent-end: #5b8eff;
+    color: var(--color-app-text-primary);
+    font-family: var(--font-sans);
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
   }
 
-  /* Dot-grid background using P3 color space optimization */
+  :root[data-theme='dark'] {
+    --color-app-primary: #8ab4f8;
+    --color-app-bg: #202124;
+    --color-app-surface: #2d2e30;
+    --color-app-text-primary: #e8eaed;
+    --color-app-text-secondary: #bdc1c6;
+    --color-app-border: #3c4043;
+  }
+
+  /* Lightweight grid texture for depth without visual clutter */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image: 
-      linear-gradient(color-mix(in oklab, var(--color-brand-green) 2.5%, transparent) 1px, transparent 1px),
-      linear-gradient(90deg, color-mix(in oklab, var(--color-brand-green) 2.5%, transparent) 1px, transparent 1px);
-    background-size: 44px 44px;
+      linear-gradient(color-mix(in oklab, var(--color-app-primary) 4%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, var(--color-app-primary) 4%, transparent) 1px, transparent 1px);
+    background-size: 56px 56px;
     pointer-events: none;
     z-index: 0;
   }
@@ -85,31 +111,71 @@
   }
 
   .glass-card {
-    background: var(--color-brand-surface);
-    border: 1px solid var(--color-brand-border);
-    border-radius: 6px;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-app-surface) 92%, #ffffff 8%), var(--color-app-surface));
+    border: 1px solid var(--color-app-border);
+    border-radius: 12px;
     position: relative;
     z-index: 1;
   }
 
+  .page-tone-warm {
+    --card-accent-start: #f9ab00;
+    --card-accent-end: #c77dff;
+    background:
+      radial-gradient(980px 380px at 15% -12%, color-mix(in oklab, var(--color-app-surface-warm) 55%, #f9ab00 45%), transparent 56%),
+      radial-gradient(760px 320px at 85% -16%, color-mix(in oklab, var(--color-app-surface-lavender) 68%, #c77dff 32%), transparent 62%),
+      var(--color-app-bg);
+  }
+
+  .page-tone-cool {
+    --card-accent-start: #1a73e8;
+    --card-accent-end: #5b8eff;
+    background:
+      radial-gradient(1060px 400px at 12% -12%, color-mix(in oklab, var(--color-app-surface-cool) 58%, var(--color-app-primary) 42%), transparent 58%),
+      radial-gradient(840px 320px at 88% -14%, color-mix(in oklab, var(--color-app-surface-lavender) 70%, #5b8eff 30%), transparent 64%),
+      var(--color-app-bg);
+  }
+
+  .page-tone-mint {
+    --card-accent-start: #188038;
+    --card-accent-end: #1a73e8;
+    background:
+      radial-gradient(1040px 390px at 10% -8%, color-mix(in oklab, var(--color-app-surface-mint) 60%, #188038 40%), transparent 58%),
+      radial-gradient(780px 300px at 90% -14%, color-mix(in oklab, var(--color-app-surface-cool) 72%, #5b8eff 28%), transparent 64%),
+      var(--color-app-bg);
+  }
+
+  /* Make bordered blocks more visible across pages */
+  .rounded.border,
+  .rounded-md.border,
+  .rounded-lg.border,
+  .rounded-xl.border,
+  .rounded-2xl.border {
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-app-surface) 94%, #ffffff 6%), var(--color-app-surface));
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-app-border) 60%, transparent),
+      0 3px 10px rgba(60, 64, 67, 0.07),
+      0 1px 2px rgba(60, 64, 67, 0.09);
+  }
+
   /* Custom Scrollbar Styles */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: var(--color-brand-surface); }
-  ::-webkit-scrollbar-thumb { background: var(--color-brand-border); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--color-brand-muted); }
+  ::-webkit-scrollbar-track { background: #eef0f2; }
+  ::-webkit-scrollbar-thumb { background: #c8ccd1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #b4b8bd; }
 
   /* Input/Form Focus States */
   input, textarea, select {
-    background: var(--color-brand-surface2);
-    border: 1px solid var(--color-brand-border);
-    color: var(--color-brand-text);
-    border-radius: 4px;
+    background: var(--color-app-surface);
+    border: 1px solid #dadce0;
+    color: var(--color-app-text-primary);
+    border-radius: 8px;
     padding: 0.5rem 0.75rem;
     transition: border-color 0.15s ease;
     outline: none;
   }
 
   input:focus {
-    border-color: var(--color-brand-green);
+    border-color: var(--color-app-primary);
   }
 }

@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useMemo, useState } from 'react'
 import NotificationBell from '@/components/NotificationBell'
+import ThemeToggle from '@/components/ui/ThemeToggle'
+import SectionContainer from '@/components/ui/SectionContainer'
 import { 
   LayoutDashboard, Map, BarChart2, Trophy, 
   LogOut, Menu, X, Flame, Star, Settings, Shield
@@ -80,16 +82,16 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
   const initial = displayName?.[0]?.toUpperCase() ?? 'U'
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-brand-border bg-brand-bg/95 backdrop-blur-lg">
-      <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 border-b border-[var(--color-app-border)] bg-[var(--color-app-surface)]/95 backdrop-blur">
+      <SectionContainer className="flex h-16 items-center justify-between">
         
         {/* Logo */}
-        <Link href="/dashboard" className="font-display font-black text-lg gradient-text">
+        <Link href="/dashboard" className="text-lg font-semibold text-[var(--color-app-text-primary)]">
           SkillMentor AI
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-2">
           {LINKS.map(({ href, label, Icon }) => {
             const isActive = pathname === href || pathname.startsWith(`${href}/`)
             return (
@@ -97,13 +99,13 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
                 key={href} 
                 href={href}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs transition-colors",
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
                   isActive 
-                    ? "bg-brand-green/10 text-brand-green" 
-                    : "text-brand-muted hover:text-brand-text hover:bg-white/5"
+                    ? "bg-[#e8f0fe] text-[var(--color-app-primary)]" 
+                    : "text-[var(--color-app-text-secondary)] hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text-primary)]"
                 )}
               >
-                <Icon size={12} />
+                <Icon size={14} />
                 {label}
               </Link>
             )
@@ -111,44 +113,46 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
         </div>
 
         {/* User Stats & Profile */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {currentUserId && <NotificationBell userId={currentUserId} />}
 
+          <ThemeToggle />
+
           {/* Streak Counter */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-bold bg-brand-yellow/10 border border-brand-yellow/20 text-brand-yellow">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--color-app-border)] bg-[var(--color-app-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-app-text-secondary)]">
             <Flame size={12} />
             {displayStreak}
           </div>
 
           {/* XP Display */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-bold bg-brand-purple/10 border border-brand-purple/20 text-brand-purple">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--color-app-border)] bg-[var(--color-app-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-app-text-secondary)]">
             <Star size={12} />
             {displayXp} XP
           </div>
 
           {/* Avatar Dropdown */}
           <div className="relative group">
-            <button className="w-8 h-8 rounded-full flex items-center justify-center font-display font-bold text-sm bg-brand-green text-brand-bg hover:scale-105 transition-transform">
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-app-primary)] text-sm font-semibold text-white transition-transform hover:scale-105">
               {initial}
             </button>
             
             {/* Popover Menu */}
-            <div className="absolute right-0 top-8 w-48 rounded-sm border border-brand-border bg-brand-surface shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto transition-all duration-200">
-              <div className="px-4 py-3 border-b border-brand-border">
-                <p className="text-xs font-bold text-brand-text truncate">{displayName}</p>
-                <p className="text-[10px] text-brand-muted uppercase tracking-wider">Student</p>
+            <div className="pointer-events-none absolute right-0 top-10 w-52 translate-y-2 rounded-xl border border-[var(--color-app-border)] bg-[var(--color-app-surface)] opacity-0 shadow-sm transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="border-b border-[var(--color-app-border)] px-4 py-3">
+                <p className="truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{displayName}</p>
+                <p className="text-xs text-[var(--color-app-text-secondary)]">Student</p>
               </div>
               
-              <Link href="/settings" className="flex items-center gap-2 px-4 py-2.5 text-xs text-brand-muted hover:bg-white/5 hover:text-brand-text transition-colors">
-                <Settings size={12} />
+              <Link href="/settings" className="flex items-center gap-2 px-4 py-2.5 text-sm text-[var(--color-app-text-secondary)] transition-colors hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text-primary)]">
+                <Settings size={14} />
                 Settings
               </Link>
               
               <button 
                 onClick={logout} 
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-brand-red hover:bg-brand-red/5 transition-colors"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-500 transition-colors hover:bg-red-50"
               >
-                <LogOut size={12} />
+                <LogOut size={14} />
                 Sign Out
               </button>
             </div>
@@ -156,37 +160,37 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
 
           {/* Mobile Toggle */}
           <button 
-            className="md:hidden text-brand-muted hover:text-brand-text" 
+            className="text-[var(--color-app-text-secondary)] hover:text-[var(--color-app-text-primary)] md:hidden" 
             onClick={() => setOpen(!open)}
           >
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
-      </div>
+      </SectionContainer>
 
       {/* Mobile Menu Overlay */}
       {open && (
-        <div className="md:hidden border-t border-brand-border bg-brand-bg px-5 py-4 flex flex-col gap-2 animate-fade-up">
+        <div className="animate-fade-up border-t border-[var(--color-app-border)] bg-[var(--color-app-surface)] px-5 py-4 md:hidden">
           {LINKS.map(({ href, label, Icon }) => (
             <Link 
               key={href} 
               href={href} 
               onClick={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-sm text-sm",
+                "flex items-center gap-3 rounded-lg px-3 py-3 text-sm",
                 pathname === href || pathname.startsWith(`${href}/`)
-                  ? "text-brand-green bg-brand-green/5"
-                  : "text-brand-muted"
+                  ? "bg-[#e8f0fe] text-[var(--color-app-primary)]"
+                  : "text-[var(--color-app-text-secondary)]"
               )}
             >
               <Icon size={16} />
               {label}
             </Link>
           ))}
-          <div className="h-px bg-brand-border my-2" />
+          <div className="my-2 h-px bg-[var(--color-app-border)]" />
           <button 
             onClick={logout} 
-            className="flex items-center gap-3 px-3 py-3 text-sm text-brand-red"
+            className="flex items-center gap-3 px-3 py-3 text-sm text-red-500"
           >
             <LogOut size={16} />
             Sign Out

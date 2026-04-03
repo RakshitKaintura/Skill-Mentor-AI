@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useAnalytics } from '@/hooks/useAnalytics'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
+import SectionContainer from '@/components/ui/SectionContainer'
 import Spinner from '@/components/ui/Spinner'
 import type {
   InterviewSession, AnswerEvaluation, InterviewSummary
@@ -144,9 +145,9 @@ function InterviewPageContent() {
 
   // ── Setup ─────────────────────────────────────────────
   if (phase === 'setup') return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen page-tone-mint">
       <DashboardNavbar />
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <SectionContainer className="py-12 max-w-2xl">
         <div className="mb-8">
           <div className="text-xs font-mono text-brand-yellow uppercase tracking-widest mb-2">Agent 8 · Career Prep</div>
           <h1 className="font-display font-black text-4xl text-brand-text">Mock Interview</h1>
@@ -210,13 +211,13 @@ function InterviewPageContent() {
             {loading ? 'Generating questions…' : '🎤 Start Interview'}
           </button>
         </div>
-      </div>
+      </SectionContainer>
     </div>
   )
 
   // ── Interview ─────────────────────────────────────────
   if (phase === 'interview' && session) return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen page-tone-mint">
       <DashboardNavbar />
 
       {/* Progress bar */}
@@ -227,7 +228,7 @@ function InterviewPageContent() {
         />
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <SectionContainer className="py-8 max-w-3xl">
         {/* Question header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -337,15 +338,15 @@ function InterviewPageContent() {
             </button>
           </div>
         )}
-      </div>
+      </SectionContainer>
     </div>
   )
 
   // ── Results ───────────────────────────────────────────
   if (phase === 'results' && summary) return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen page-tone-mint">
       <DashboardNavbar />
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <SectionContainer className="py-10 max-w-3xl">
         <div className="text-center mb-10">
           <div className={`text-8xl font-display font-black mb-2 ${
             summary.overall_score >= 75 ? 'text-brand-green' :
@@ -423,12 +424,12 @@ function InterviewPageContent() {
             </button>
           </div>
         </div>
-      </div>
+      </SectionContainer>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+    <div className="min-h-screen page-tone-mint flex items-center justify-center">
       <Spinner />
     </div>
   )
@@ -436,7 +437,7 @@ function InterviewPageContent() {
 
 export default function InterviewPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+    <Suspense fallback={<div className="min-h-screen page-tone-mint flex items-center justify-center"><Spinner /></div>}>
       <InterviewPageContent />
     </Suspense>
   )

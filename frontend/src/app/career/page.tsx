@@ -3,6 +3,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
+import SectionContainer from '@/components/ui/SectionContainer'
 import Spinner from '@/components/ui/Spinner'
 import type { JobReadiness } from '@/types/week4'
 
@@ -72,13 +73,13 @@ function CareerPageContent() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>
+    <div className="min-h-screen page-tone-warm flex items-center justify-center"><Spinner /></div>
   )
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen page-tone-warm">
       <DashboardNavbar />
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <SectionContainer className="py-10">
         <div className="mb-8">
           <div className="text-xs font-mono text-brand-yellow uppercase tracking-widest mb-2">
             Agent 8 · Career Prep
@@ -92,7 +93,7 @@ function CareerPageContent() {
         {readiness && (
           <>
             {/* Readiness score */}
-            <div className="bg-brand-surface border border-brand-border rounded-xl p-8 mb-6 text-center">
+            <div className="bg-[var(--color-app-surface-warm)] border border-[#f5d59a] rounded-xl p-8 mb-6 text-center">
               <div className={`text-8xl font-display font-black mb-2 ${
                 readiness.job_ready ? 'text-brand-green' :
                 readiness.readiness_score >= 50 ? 'text-brand-yellow' : 'text-brand-red'
@@ -106,7 +107,7 @@ function CareerPageContent() {
             </div>
 
             {/* Checklist */}
-            <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-6">
+            <div className="bg-[var(--color-app-surface-mint)] border border-[#b7e1c3] rounded-xl p-6 mb-6">
               <div className="text-xs font-mono text-brand-muted uppercase tracking-widest mb-4">
                 Job Readiness Checklist
               </div>
@@ -137,7 +138,7 @@ function CareerPageContent() {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <button
                 onClick={() => router.push(`/interview?skill=${skill}&level=${level}&roadmap_id=${roadmapId}`)}
-                className="bg-brand-surface border border-brand-yellow/40 text-brand-yellow p-5 rounded-xl font-mono text-sm hover:bg-brand-yellow/5 transition-colors text-left"
+                className="bg-[var(--color-app-surface-warm)] border border-[#f5d59a] text-brand-yellow p-5 rounded-xl font-mono text-sm hover:bg-[#fff4de] transition-colors text-left"
               >
                 <div className="text-2xl mb-2">🎤</div>
                 <div className="font-bold mb-1">Mock Interview</div>
@@ -146,7 +147,7 @@ function CareerPageContent() {
 
               <button
                 onClick={() => router.push(`/resume?skill=${skill}&level=${level}&roadmap_id=${roadmapId}`)}
-                className="bg-brand-surface border border-brand-blue/40 text-brand-blue p-5 rounded-xl font-mono text-sm hover:bg-brand-blue/5 transition-colors text-left"
+                className="bg-[var(--color-app-surface-lavender)] border border-[#d4c7ff] text-brand-blue p-5 rounded-xl font-mono text-sm hover:bg-[#f1ecff] transition-colors text-left"
               >
                 <div className="text-2xl mb-2">📄</div>
                 <div className="font-bold mb-1">Resume ATS Score</div>
@@ -158,7 +159,7 @@ function CareerPageContent() {
             <div className={`rounded-xl p-6 border ${
               readiness.job_ready
                 ? 'bg-brand-green/5 border-brand-green/30'
-                : 'bg-brand-surface border-brand-border opacity-50'
+                : 'bg-[var(--color-app-surface-cool)] border-[var(--color-app-border)] opacity-90'
             }`}>
               <div className="flex items-center justify-between">
                 <div>
@@ -195,14 +196,14 @@ function CareerPageContent() {
             </div>
           </>
         )}
-      </div>
+      </SectionContainer>
     </div>
   )
 }
 
 export default function CareerPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+    <Suspense fallback={<div className="min-h-screen page-tone-warm flex items-center justify-center"><Spinner /></div>}>
       <CareerPageContent />
     </Suspense>
   )

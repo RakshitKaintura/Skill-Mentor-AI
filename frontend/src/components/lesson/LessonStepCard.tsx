@@ -26,8 +26,8 @@ export function LessonStepCard({ step, index, isActive, onClick }: Props) {
     <div onClick={onClick}
       className="rounded-sm cursor-pointer transition-all duration-200"
       style={{
-        border:     `1px solid ${isActive ? cfg.color + '40' : '#1E2A42'}`,
-        background: isActive ? cfg.bg : '#0E1420',
+        border:     `1px solid ${isActive ? cfg.color + '40' : 'var(--color-app-border)'}`,
+        background: isActive ? cfg.bg : 'var(--color-app-surface)',
         transform:  isActive ? 'none' : 'scale(0.99)',
       }}>
 
@@ -35,8 +35,8 @@ export function LessonStepCard({ step, index, isActive, onClick }: Props) {
       <div className="flex items-center gap-3 px-5 py-4">
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
           style={{
-            background: isActive ? cfg.color + '20' : '#141B2D',
-            border:     `1px solid ${isActive ? cfg.color + '40' : '#1E2A42'}`,
+            background: isActive ? cfg.color + '20' : 'color-mix(in oklab, var(--color-app-surface) 88%, var(--color-app-primary) 12%)',
+            border:     `1px solid ${isActive ? cfg.color + '40' : 'var(--color-app-border)'}`,
           }}>
           {cfg.icon}
         </div>
@@ -49,12 +49,12 @@ export function LessonStepCard({ step, index, isActive, onClick }: Props) {
             </span>
           </div>
           {!isActive && (
-            <p className="text-xs truncate mt-0.5" style={{ color: '#6B7A99' }}>
+            <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-app-text-secondary)' }}>
               {step.content.slice(0, 80)}…
             </p>
           )}
         </div>
-        <div className="text-xs" style={{ color: '#3A4A6A' }}>
+        <div className="text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>
           {String(index + 1).padStart(2, '0')}
         </div>
       </div>
@@ -63,7 +63,7 @@ export function LessonStepCard({ step, index, isActive, onClick }: Props) {
       {isActive && (
         <div className="px-5 pb-6 border-t" style={{ borderColor: cfg.color + '20' }}>
           <div className="mt-4 space-y-4">
-            <div className="text-sm leading-relaxed" style={{ color: '#C4CFEA' }}>
+            <div className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>
               {step.content.split('\n\n').map((para, i) => (
                 <p key={i} className={i > 0 ? 'mt-3' : ''}>{para}</p>
               ))}

@@ -1,23 +1,15 @@
 import type { Metadata, Viewport } from 'next'
 import { Suspense } from 'react'
-import { Syne, DM_Mono } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import AnalyticsTracker from '@/components/AnalyticsTracker'
 import './globals.css'
 
-// 1. Optimized font loading
-const syne = Syne({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-syne',
+  variable: '--font-inter',
   display: 'swap',
-  weight: ['400', '600', '700', '800'],
-})
-
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  variable: '--font-dm-mono',
-  display: 'swap',
-  weight: ['300', '400', '500'],
+  weight: ['400', '500', '600', '700'],
 })
 
 // 2. Metadata API (SEO Optimized)
@@ -50,10 +42,10 @@ export default function RootLayout({
   return (
     <html 
       lang="en" 
-      className={`${syne.variable} ${dmMono.variable} scroll-smooth`}
+      className={`${inter.variable} scroll-smooth`}
       suppressHydrationWarning
     >
-      <body className="bg-brand-bg text-brand-text font-mono antialiased selection:bg-brand-green selection:text-brand-bg">
+      <body className="bg-[var(--color-app-bg)] text-[var(--color-app-text-primary)] font-sans antialiased selection:bg-[#d2e3fc] selection:text-[var(--color-app-text-primary)]">
         <Suspense fallback={null}>
           <AnalyticsTracker />
         </Suspense>
@@ -66,7 +58,7 @@ export default function RootLayout({
         {/* Global Notifications */}
         <Toaster 
           position="bottom-right" 
-          theme="dark" 
+          theme="light" 
           richColors 
           closeButton
           expand={false}

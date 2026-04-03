@@ -345,7 +345,7 @@ function ProjectPageContent() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+    <div className="min-h-screen page-tone-mint flex items-center justify-center">
       <div className="text-center">
         <Spinner />
         <p className="text-brand-muted font-mono text-sm mt-4">
@@ -356,13 +356,13 @@ function ProjectPageContent() {
   )
 
   if (!project) return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+    <div className="min-h-screen page-tone-mint flex items-center justify-center">
       <p className="text-brand-muted font-mono text-sm">{error || 'No project found. Go back to your roadmap.'}</p>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen page-tone-mint">
       <DashboardNavbar />
 
       {/* Header */}
@@ -655,7 +655,7 @@ function ProjectPageContent() {
 
 export default function ProjectPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+    <Suspense fallback={<div className="min-h-screen page-tone-mint flex items-center justify-center"><Spinner /></div>}>
       <ProjectPageContent />
     </Suspense>
   )

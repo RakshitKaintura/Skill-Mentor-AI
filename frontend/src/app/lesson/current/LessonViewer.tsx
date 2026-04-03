@@ -364,7 +364,7 @@ export function LessonViewer({
   // ── Loading ──────────────────────────────────────────────
   if (generating || loading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen page-tone-mint">
         <DashboardNavbar userName={userName} />
         <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
           <div className="relative">
@@ -391,7 +391,7 @@ export function LessonViewer({
   // ── Error ────────────────────────────────────────────────
   if (error || !lesson) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen page-tone-mint">
         <DashboardNavbar userName={userName} />
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
           <div className="text-5xl mb-2">😔</div>
@@ -410,7 +410,7 @@ export function LessonViewer({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen page-tone-mint">
       <DashboardNavbar userName={userName} />
 
       <div className="max-w-5xl mx-auto px-5 py-8">
@@ -502,7 +502,7 @@ export function LessonViewer({
 
         {/* Tab Switcher */}
         <div className="flex gap-0 mb-6 border rounded-sm overflow-hidden"
-          style={{ borderColor: '#1E2A42', width: 'fit-content' }}>
+          style={{ borderColor: 'var(--color-app-border)', width: 'fit-content' }}>
           {[
             { mode: 'lesson' as PanelMode, icon: BookOpen,      label: 'Read'      },
             { mode: 'voice'  as PanelMode, icon: Mic,           label: 'Voice'     },
@@ -511,9 +511,9 @@ export function LessonViewer({
             <button key={mode} onClick={() => handlePanelChange(mode)}
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs transition-all"
               style={{
-                background: panel === mode ? 'rgba(79,255,160,0.08)' : '#0E1420',
-                color:      panel === mode ? '#4FFFA0' : '#6B7A99',
-                borderRight: '1px solid #1E2A42',
+                background: panel === mode ? 'color-mix(in oklab, var(--color-app-primary) 10%, var(--color-app-surface))' : 'var(--color-app-surface)',
+                color:      panel === mode ? 'var(--color-app-primary)' : 'var(--color-app-text-secondary)',
+                borderRight: '1px solid var(--color-app-border)',
               }}>
               <Icon size={12} />{label}
             </button>
@@ -532,10 +532,10 @@ export function LessonViewer({
             <div className="flex items-center justify-between mt-6">
               <button onClick={() => setActiveStep(Math.max(0, activeStep - 1))} disabled={activeStep === 0}
                 className="flex items-center gap-2 px-5 py-3 rounded-sm text-sm border disabled:opacity-30 transition-all"
-                style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+                style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
                 <ChevronLeft size={14} /> Previous
               </button>
-              <span className="text-xs" style={{ color: '#6B7A99' }}>Step {activeStep + 1} of {totalSteps}</span>
+              <span className="text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>Step {activeStep + 1} of {totalSteps}</span>
               {isLast ? (
                 <button onClick={handleComplete} disabled={completing || lesson.completed}
                   className="flex items-center gap-2 px-5 py-3 rounded-sm text-sm font-bold disabled:opacity-50"
@@ -552,12 +552,12 @@ export function LessonViewer({
               )}
             </div>
             {lesson.sources_used.length > 0 && (
-              <div className="mt-6 p-4 rounded-sm" style={{ background: '#0E1420', border: '1px solid #1E2A42' }}>
-                <p className="text-xs font-bold mb-2" style={{ color: '#6B7A99' }}>SOURCES USED</p>
+              <div className="mt-6 p-4 rounded-sm" style={{ background: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--color-app-text-secondary)' }}>SOURCES USED</p>
                 <div className="flex flex-wrap gap-2">
                   {lesson.sources_used.map((src, i) => (
                     <span key={i} className="text-xs px-2 py-1 rounded-sm"
-                      style={{ background: '#141B2D', color: '#6B7A99', border: '1px solid #1E2A42' }}>
+                      style={{ background: 'color-mix(in oklab, var(--color-app-surface) 88%, var(--color-app-primary) 12%)', color: 'var(--color-app-text-secondary)', border: '1px solid var(--color-app-border)' }}>
                       {src}
                     </span>
                   ))}

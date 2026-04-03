@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
+import SectionContainer from '@/components/ui/SectionContainer'
 import Spinner from '@/components/ui/Spinner'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -57,17 +58,17 @@ function ResumePageContent() {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-brand-bg flex items-center justify-center">
+			<div className="min-h-screen page-tone-cool flex items-center justify-center">
 				<Spinner />
 			</div>
 		)
 	}
 
 	return (
-		<div className="min-h-screen bg-brand-bg">
+		<div className="min-h-screen page-tone-cool">
 			<DashboardNavbar />
 
-			<div className="max-w-4xl mx-auto px-6 py-10">
+			<SectionContainer className="py-10 max-w-4xl">
 				<div className="mb-8">
 					<div className="text-xs font-mono text-brand-blue uppercase tracking-widest mb-2">
 						Agent 8 · Resume ATS Score
@@ -162,14 +163,14 @@ function ResumePageContent() {
 						</div>
 					</div>
 				)}
-			</div>
+			</SectionContainer>
 		</div>
 	)
 }
 
 export default function ResumePage() {
 	return (
-		<Suspense fallback={<div className="min-h-screen bg-brand-bg flex items-center justify-center"><Spinner /></div>}>
+		<Suspense fallback={<div className="min-h-screen page-tone-cool flex items-center justify-center"><Spinner /></div>}>
 			<ResumePageContent />
 		</Suspense>
 	)

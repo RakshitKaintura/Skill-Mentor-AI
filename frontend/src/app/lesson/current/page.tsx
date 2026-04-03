@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { LessonViewer } from './LessonViewer'
+import SectionContainer from '@/components/ui/SectionContainer'
 
 /**
  * Server Component: CurrentLessonPage
@@ -51,8 +52,8 @@ export default async function CurrentLessonPage() {
     .single()
 
   return (
-    <div className="min-h-screen bg-brand-bg">
-      <main className="max-w-5xl mx-auto px-5 py-8">
+    <div className="min-h-screen page-tone-mint">
+      <SectionContainer className="py-8">
         {/* LessonViewer is a Client Component that handles:
           - Calling the /api/lesson/generate endpoint
             - Rendering the 6-step lesson content
@@ -68,7 +69,7 @@ export default async function CurrentLessonPage() {
           existingLessonId={existingLesson?.id ?? null}
           userName={profile.full_name ?? 'Learner'}
         />
-      </main>
+      </SectionContainer>
     </div>
   )
 }
