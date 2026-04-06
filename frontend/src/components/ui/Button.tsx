@@ -14,11 +14,11 @@ export function buttonClassName({
   className?: string
 } = {}) {
   return cn(
-    'inline-flex items-center justify-center rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-app-primary)] disabled:pointer-events-none disabled:opacity-60',
+    'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-app-primary)] disabled:pointer-events-none disabled:opacity-60',
     size === 'md' ? 'h-10 px-4 text-sm' : 'h-12 px-6 text-base',
     variant === 'primary'
-      ? 'bg-[var(--color-app-primary)] text-white hover:bg-[#1765cc]'
-      : 'border border-[var(--color-app-border)] bg-[var(--color-app-surface)] text-[var(--color-app-text-primary)] hover:bg-[var(--color-app-bg)]',
+      ? 'border border-[#1558ba] bg-gradient-to-r from-[#1a73e8] via-[#4285f4] to-[#34a853] text-[#0f172a] shadow-[0_12px_24px_rgba(26,115,232,0.28)] hover:-translate-y-0.5 hover:brightness-105'
+      : 'border border-[var(--color-app-border)] bg-[color-mix(in_oklab,var(--color-app-surface-cool)_76%,var(--color-app-surface)_24%)] text-[var(--color-app-text-primary)] shadow-[0_8px_14px_rgba(20,24,35,0.06)] hover:-translate-y-0.5 hover:bg-[color-mix(in_oklab,var(--color-app-surface-cool)_88%,var(--color-app-surface)_12%)]',
     className,
   )
 }

@@ -20,10 +20,13 @@ export function CodeBlock({ code, language = 'javascript', title, maxHeight = 40
   }
 
   return (
-    <div className="rounded-sm overflow-hidden" style={{ border: '1px solid #1E2A42' }}>
+    <div className="rounded-sm overflow-hidden" style={{ border: '1px solid var(--color-app-border)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5"
-        style={{ background: '#0A1020', borderBottom: '1px solid #1E2A42' }}>
+        style={{
+          background: 'color-mix(in oklab, var(--color-app-surface-cool) 70%, var(--color-app-surface) 30%)',
+          borderBottom: '1px solid var(--color-app-border)',
+        }}>
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full" style={{ background: '#FF5F57' }} />
@@ -31,7 +34,7 @@ export function CodeBlock({ code, language = 'javascript', title, maxHeight = 40
             <div className="w-3 h-3 rounded-full" style={{ background: '#28C840' }} />
           </div>
           {(title || language) && (
-            <span className="text-xs" style={{ color: '#6B7A99', fontFamily: 'var(--font-dm-mono)' }}>
+            <span className="text-xs" style={{ color: 'var(--color-app-text-secondary)', fontFamily: 'var(--font-mono)' }}>
               {title || language}
             </span>
           )}
@@ -39,18 +42,28 @@ export function CodeBlock({ code, language = 'javascript', title, maxHeight = 40
         <button onClick={handleCopy}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs transition-all"
           style={{
-            background: copied ? 'rgba(79,255,160,0.1)' : 'rgba(255,255,255,0.05)',
-            color:      copied ? '#4FFFA0' : '#6B7A99',
-            border:     `1px solid ${copied ? 'rgba(79,255,160,0.3)' : '#1E2A42'}`,
+            background: copied
+              ? 'color-mix(in oklab, var(--color-app-surface-mint) 70%, var(--color-app-surface) 30%)'
+              : 'var(--color-app-surface)',
+            color: copied ? '#188038' : 'var(--color-app-text-secondary)',
+            border: `1px solid ${copied
+              ? 'color-mix(in oklab, #188038 40%, var(--color-app-border))'
+              : 'var(--color-app-border)'}`,
           }}>
           {copied ? <><Check size={11} />Copied!</> : <><Copy size={11} />Copy</>}
         </button>
       </div>
 
       {/* Code */}
-      <div style={{ background: '#080D18', maxHeight, overflowY: 'auto' }}>
+      <div
+        style={{
+          background: 'color-mix(in oklab, var(--color-app-surface-cool) 74%, var(--color-app-surface) 26%)',
+          maxHeight,
+          overflowY: 'auto',
+        }}
+      >
         <pre className="p-4 text-xs leading-relaxed overflow-x-auto"
-          style={{ fontFamily: 'var(--font-dm-mono), Consolas, monospace', color: '#E8EDF8', margin: 0 }}>
+          style={{ fontFamily: 'var(--font-mono), Consolas, monospace', color: 'var(--color-app-text-primary)', margin: 0 }}>
           <code>{code}</code>
         </pre>
       </div>

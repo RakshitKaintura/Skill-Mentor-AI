@@ -82,7 +82,7 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
   const initial = displayName?.[0]?.toUpperCase() ?? 'U'
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-[var(--color-app-border)] bg-[var(--color-app-surface)]/95 backdrop-blur">
+    <nav className="sticky top-0 z-50 border-b border-[var(--color-app-border)] bg-[color-mix(in_oklab,var(--color-app-surface)_86%,transparent)]/95 backdrop-blur-md">
       <SectionContainer className="flex h-16 items-center justify-between">
         
         {/* Logo */}
@@ -99,10 +99,10 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
                 key={href} 
                 href={href}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
                   isActive 
-                    ? "bg-[#e8f0fe] text-[var(--color-app-primary)]" 
-                    : "text-[var(--color-app-text-secondary)] hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text-primary)]"
+                    ? "neo-surface text-[var(--color-app-primary)]" 
+                    : "text-[var(--color-app-text-secondary)] hover:-translate-y-0.5 hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text-primary)]"
                 )}
               >
                 <Icon size={14} />
@@ -119,20 +119,20 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
           <ThemeToggle />
 
           {/* Streak Counter */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--color-app-border)] bg-[var(--color-app-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-app-text-secondary)]">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-[var(--color-app-border)] bg-[var(--color-app-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-app-text-secondary)]">
             <Flame size={12} />
             {displayStreak}
           </div>
 
           {/* XP Display */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--color-app-border)] bg-[var(--color-app-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-app-text-secondary)]">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-[var(--color-app-border)] bg-[var(--color-app-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-app-text-secondary)]">
             <Star size={12} />
             {displayXp} XP
           </div>
 
           {/* Avatar Dropdown */}
           <div className="relative group">
-            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-app-primary)] text-sm font-semibold text-white transition-transform hover:scale-105">
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(140deg,var(--card-accent-start),var(--card-accent-end))] text-sm font-semibold text-white shadow-[0_10px_20px_color-mix(in_oklab,var(--card-accent-start)_30%,transparent)] transition-transform hover:scale-105">
               {initial}
             </button>
             

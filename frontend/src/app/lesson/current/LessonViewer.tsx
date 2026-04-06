@@ -379,7 +379,7 @@ export function LessonViewer({
             <h2 className="font-display font-black text-2xl mb-2" style={{ letterSpacing: '-0.5px' }}>
               {generating ? 'Preparing your lesson…' : 'Loading lesson…'}
             </h2>
-            <p className="text-sm" style={{ color: '#6B7A99' }}>
+            <p className="text-sm" style={{ color: 'var(--color-app-text-secondary)' }}>
               {generating ? 'Gemini 3.1 Flash Lite Preview is crafting content just for you' : 'Fetching saved lesson'}
             </p>
           </div>
@@ -396,14 +396,14 @@ export function LessonViewer({
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
           <div className="text-5xl mb-2">😔</div>
           <h2 className="font-display font-black text-2xl">Lesson generation failed</h2>
-          <p className="text-sm max-w-md" style={{ color: '#6B7A99' }}>{error ?? 'Something went wrong.'}</p>
+          <p className="text-sm max-w-md" style={{ color: 'var(--color-app-text-secondary)' }}>{error ?? 'Something went wrong.'}</p>
           <button
             onClick={() => generateLesson({ roadmap_id: roadmapId, topic, skill, level, phase_name: phaseName, week_number: weekNumber })}
             className="flex items-center gap-2 px-6 py-3 rounded-sm font-display font-bold text-sm"
-            style={{ background: '#4FFFA0', color: '#080B14' }}>
+            style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}>
             Try Again
           </button>
-          <Link href="/dashboard" className="text-sm underline" style={{ color: '#6B7A99' }}>Back to Dashboard</Link>
+          <Link href="/dashboard" className="text-sm underline" style={{ color: 'var(--color-app-text-secondary)' }}>Back to Dashboard</Link>
         </div>
       </div>
     )
@@ -418,30 +418,34 @@ export function LessonViewer({
         {/* Breadcrumb + Actions */}
         <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-1.5 text-xs transition-colors hover:text-white"
-              style={{ color: '#6B7A99' }}><ArrowLeft size={12} /> Dashboard</Link>
-            <span style={{ color: '#1E2A42' }}>/</span>
-            <span className="text-xs" style={{ color: '#6B7A99' }}>{phaseName}</span>
-            <span style={{ color: '#1E2A42' }}>/</span>
+            <Link href="/dashboard" className="flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--color-app-text-primary)]"
+              style={{ color: 'var(--color-app-text-secondary)' }}><ArrowLeft size={12} /> Dashboard</Link>
+            <span style={{ color: 'var(--color-app-border)' }}>/</span>
+            <span className="text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>{phaseName}</span>
+            <span style={{ color: 'var(--color-app-border)' }}>/</span>
             <span className="text-xs truncate">{topic}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <button onClick={handleGenerateNotes} disabled={notesLoading}
               className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-xs border transition-all disabled:opacity-50"
-              style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+              style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
               {notesLoading ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
               {lesson.pdf_notes_url ? 'Download Notes' : 'Generate Notes'}
             </button>
             {!lesson.completed ? (
               <button onClick={handleComplete} disabled={completing}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-sm text-xs font-bold disabled:opacity-50"
-                style={{ background: '#4FFFA0', color: '#080B14' }}>
+                style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}>
                 {completing ? <><Loader2 size={11} className="animate-spin" />Completing…</> : <><CheckCircle size={11} />Mark Complete</>}
               </button>
             ) : (
               <div className="flex items-center gap-1.5 px-4 py-2 rounded-sm text-xs font-bold"
-                style={{ background: 'rgba(79,255,160,0.1)', color: '#4FFFA0', border: '1px solid rgba(79,255,160,0.3)' }}>
+                style={{
+                  background: 'color-mix(in oklab, var(--color-app-surface-mint) 70%, var(--color-app-surface) 30%)',
+                  color: '#188038',
+                  border: '1px solid color-mix(in oklab, #188038 40%, var(--color-app-border))',
+                }}>
                 <CheckCircle size={11} /> Completed
               </div>
             )}
@@ -452,22 +456,26 @@ export function LessonViewer({
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs px-2 py-0.5 rounded-sm"
-              style={{ background: 'rgba(79,255,160,0.1)', color: '#4FFFA0', border: '1px solid rgba(79,255,160,0.2)' }}>
+              style={{
+                background: 'color-mix(in oklab, var(--color-app-surface-mint) 70%, var(--color-app-surface) 30%)',
+                color: '#188038',
+                border: '1px solid color-mix(in oklab, #188038 40%, var(--color-app-border))',
+              }}>
               Week {weekNumber}
             </span>
-            <span className="text-xs" style={{ color: '#6B7A99' }}>{phaseName}</span>
+            <span className="text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>{phaseName}</span>
           </div>
           <h1 className="font-display font-black text-3xl" style={{ letterSpacing: '-1px' }}>{topic}</h1>
           {lesson.key_takeaway && (
-            <p className="mt-2 text-sm" style={{ color: '#6B7A99' }}>{lesson.key_takeaway}</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--color-app-text-secondary)' }}>{lesson.key_takeaway}</p>
           )}
           <div className="flex items-center gap-1 mt-4">
             {steps.map((_, i) => (
               <button key={i} onClick={() => setActiveStep(i)}
                 className="flex-1 h-1 rounded-full transition-all"
-                style={{ background: i <= activeStep ? '#4FFFA0' : '#1E2A42', maxWidth: 60 }} />
+                style={{ background: i <= activeStep ? 'var(--color-app-primary)' : 'var(--color-app-border)', maxWidth: 60 }} />
             ))}
-            <span className="text-xs ml-2" style={{ color: '#6B7A99' }}>{activeStep + 1}/{totalSteps}</span>
+            <span className="text-xs ml-2" style={{ color: 'var(--color-app-text-secondary)' }}>{activeStep + 1}/{totalSteps}</span>
           </div>
         </div>
 
@@ -475,27 +483,27 @@ export function LessonViewer({
         <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
           <Link href={quizHref}
             className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
             Start Quiz
           </Link>
           <Link href={playgroundHref}
             className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
             Start Challenge
           </Link>
           <Link href={reportHref}
             className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
             Weekly Report
           </Link>
           <Link href={reviewHref}
             className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
             Review Queue
           </Link>
           <Link href={leaderboardHref}
             className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
             Leaderboard
           </Link>
         </div>
@@ -539,14 +547,14 @@ export function LessonViewer({
               {isLast ? (
                 <button onClick={handleComplete} disabled={completing || lesson.completed}
                   className="flex items-center gap-2 px-5 py-3 rounded-sm text-sm font-bold disabled:opacity-50"
-                  style={{ background: '#4FFFA0', color: '#080B14' }}>
+                  style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}>
                   {completing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
                   Complete Lesson
                 </button>
               ) : (
                 <button onClick={() => setActiveStep(Math.min(totalSteps - 1, activeStep + 1))}
                   className="flex items-center gap-2 px-5 py-3 rounded-sm text-sm font-bold"
-                  style={{ background: '#4FFFA0', color: '#080B14' }}>
+                  style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}>
                   Next <ChevronRight size={14} />
                 </button>
               )}
@@ -571,8 +579,8 @@ export function LessonViewer({
         {panel === 'voice' && (
           <div className="max-w-xl mx-auto">
             <div className="glass-card p-8 text-center mb-4"
-              style={{ borderColor: voice.state !== 'idle' ? 'rgba(79,255,160,0.2)' : '#1E2A42' }}>
-              <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>
+              style={{ borderColor: voice.state !== 'idle' ? 'rgba(79,255,160,0.2)' : 'var(--color-app-border)' }}>
+              <p className="text-sm mb-8" style={{ color: 'var(--color-app-text-secondary)' }}>
                 {voice.state === 'idle'
                   ? `Start a voice session — AI will teach "${topic}" out loud. Interrupt anytime.`
                   : 'Voice session active. Speak naturally — interrupt anytime.'}
@@ -594,9 +602,13 @@ export function LessonViewer({
                     }}
                     className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all"
                     style={{
-                      borderColor: voice.isPaused ? '#4FFFA0' : '#FFD166',
-                      color: voice.isPaused ? '#4FFFA0' : '#FFD166',
-                      background: voice.isPaused ? 'rgba(79,255,160,0.08)' : 'rgba(255,209,102,0.08)',
+                      borderColor: voice.isPaused
+                        ? 'color-mix(in oklab, #188038 42%, var(--color-app-border))'
+                        : 'color-mix(in oklab, #b06000 38%, var(--color-app-border))',
+                      color: voice.isPaused ? '#188038' : '#b06000',
+                      background: voice.isPaused
+                        ? 'color-mix(in oklab, var(--color-app-surface-mint) 72%, var(--color-app-surface) 28%)'
+                        : 'color-mix(in oklab, var(--color-app-surface-warm) 72%, var(--color-app-surface) 28%)',
                     }}
                   >
                     {voice.isPaused ? <><Play size={12} />Resume Lesson</> : <><Pause size={12} />Pause Lesson</>}
@@ -617,9 +629,13 @@ export function LessonViewer({
                     onClick={() => setAutoSpeakDoubt(v => !v)}
                     className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all"
                     style={{
-                      borderColor: autoSpeakDoubt ? '#C77DFF' : '#1E2A42',
-                      color: autoSpeakDoubt ? '#C77DFF' : '#6B7A99',
-                      background: autoSpeakDoubt ? 'rgba(199,125,255,0.08)' : 'transparent',
+                      borderColor: autoSpeakDoubt
+                        ? 'color-mix(in oklab, #a142f4 42%, var(--color-app-border))'
+                        : 'var(--color-app-border)',
+                      color: autoSpeakDoubt ? '#7e57c2' : 'var(--color-app-text-secondary)',
+                      background: autoSpeakDoubt
+                        ? 'color-mix(in oklab, var(--color-app-surface-lavender) 72%, var(--color-app-surface) 28%)'
+                        : 'var(--color-app-surface)',
                     }}
                   >
                     {autoSpeakDoubt ? 'Auto Speak: On' : 'Auto Speak: Off'}
@@ -628,13 +644,13 @@ export function LessonViewer({
               )}
 
               {(capturingDoubt || voiceDoubtLoading) && (
-                <p className="mt-3 text-xs" style={{ color: '#6B7A99' }}>
+                <p className="mt-3 text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>
                   {capturingDoubt ? 'Speak your doubt now. We will pause the lesson and capture your question.' : 'Generating answer for your spoken doubt…'}
                 </p>
               )}
 
               <div className="mt-5 text-left">
-                <p className="text-xs font-bold mb-2" style={{ color: '#6B7A99' }}>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--color-app-text-secondary)' }}>
                   TYPE RESPONSE / QUESTION (Fallback)
                 </p>
                 <div className="flex gap-2">
@@ -645,19 +661,19 @@ export function LessonViewer({
                     onKeyDown={(e) => e.key === 'Enter' && sendTypedVoiceInput()}
                     placeholder="Type if voice misses your input..."
                     className="flex-1 px-4 py-2.5 text-sm rounded-sm"
-                    style={{ background: '#141B2D', borderColor: '#1E2A42', color: '#E8EDF8' }}
+                    style={{ background: 'var(--color-app-surface)', borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-primary)' }}
                   />
                   <button
                     onClick={sendTypedVoiceInput}
                     disabled={!voiceTextInput.trim()}
                     className="px-4 py-2.5 rounded-sm flex items-center gap-2 text-sm font-bold disabled:opacity-40 transition-opacity"
-                    style={{ background: '#5B8EFF', color: '#080B14' }}
+                    style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}
                   >
                     <Send size={14} />
                     Send
                   </button>
                 </div>
-                <p className="mt-2 text-[11px]" style={{ color: '#6B7A99' }}>
+                <p className="mt-2 text-[11px]" style={{ color: 'var(--color-app-text-secondary)' }}>
                   Works while voice is active and also resumes session automatically if it was paused.
                 </p>
               </div>
@@ -669,16 +685,28 @@ export function LessonViewer({
             {voiceDoubtResult && (
               <div className="glass-card p-5 mb-4 space-y-4">
                 <div>
-                  <p className="text-xs font-bold mb-2" style={{ color: '#6B7A99' }}>YOUR VOICE DOUBT</p>
-                  <p className="text-sm" style={{ color: '#C4CFEA' }}>{voiceDoubtQuestion}</p>
+                  <p className="text-xs font-bold mb-2" style={{ color: 'var(--color-app-text-secondary)' }}>YOUR VOICE DOUBT</p>
+                  <p className="text-sm" style={{ color: 'var(--color-app-text-primary)' }}>{voiceDoubtQuestion}</p>
                 </div>
-                <div className="p-4 rounded-sm" style={{ background: '#141B2D', border: '1px solid #1E2A42' }}>
-                  <p className="text-xs font-bold mb-2" style={{ color: '#4FFFA0' }}>EXPLANATION</p>
-                  <p className="text-sm leading-relaxed" style={{ color: '#C4CFEA' }}>{voiceDoubtResult.answer}</p>
+                <div
+                  className="p-4 rounded-sm"
+                  style={{
+                    background: 'color-mix(in oklab, var(--color-app-surface-cool) 68%, var(--color-app-surface) 32%)',
+                    border: '1px solid color-mix(in oklab, var(--color-app-primary) 24%, var(--color-app-border))',
+                  }}
+                >
+                  <p className="text-xs font-bold mb-2" style={{ color: '#188038' }}>EXPLANATION</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>{voiceDoubtResult.answer}</p>
                 </div>
-                <div className="p-4 rounded-sm" style={{ background: 'rgba(255,209,102,0.06)', border: '1px solid rgba(255,209,102,0.2)' }}>
-                  <p className="text-xs font-bold mb-2" style={{ color: '#FFD166' }}>ANALOGY</p>
-                  <p className="text-sm leading-relaxed" style={{ color: '#C4CFEA' }}>{voiceDoubtResult.analogy}</p>
+                <div
+                  className="p-4 rounded-sm"
+                  style={{
+                    background: 'color-mix(in oklab, var(--color-app-surface-warm) 68%, var(--color-app-surface) 32%)',
+                    border: '1px solid color-mix(in oklab, #f9ab00 40%, var(--color-app-border))',
+                  }}
+                >
+                  <p className="text-xs font-bold mb-2" style={{ color: 'color-mix(in oklab, var(--color-app-text-primary) 74%, #b06000)' }}>ANALOGY</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>{voiceDoubtResult.analogy}</p>
                 </div>
                 <div className="flex justify-end">
                   <div className="flex items-center gap-2">
@@ -704,7 +732,7 @@ export function LessonViewer({
                         voice.resume(getResumePrompt())
                       }}
                       className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold"
-                      style={{ background: '#4FFFA0', color: '#080B14' }}
+                      style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}
                     >
                       <Play size={12} />Resume Voice Lesson
                     </button>
@@ -715,9 +743,9 @@ export function LessonViewer({
 
             {voice.transcript.length > 0 && (
               <div className="glass-card overflow-hidden">
-                <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: '#1E2A42' }}>
-                  <Volume2 size={13} style={{ color: '#6B7A99' }} />
-                  <span className="text-xs font-bold" style={{ color: '#6B7A99' }}>TRANSCRIPT</span>
+                <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--color-app-border)' }}>
+                  <Volume2 size={13} style={{ color: 'var(--color-app-text-secondary)' }} />
+                  <span className="text-xs font-bold" style={{ color: 'var(--color-app-text-secondary)' }}>TRANSCRIPT</span>
                 </div>
                 <VoiceTranscript messages={voice.transcript} />
               </div>
@@ -742,3 +770,4 @@ export function LessonViewer({
     </div>
   )
 }
+
