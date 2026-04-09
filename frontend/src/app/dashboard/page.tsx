@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Link from 'next/link'
-import { ArrowRight, BookOpen, Mic, Flame, Star, Map, Clock, Target } from 'lucide-react'
+import { ArrowRight, BookOpen, Mic, Flame, Star, Map, Clock, Target, Layers } from 'lucide-react'
 import type { Roadmap, UserProgress } from '@/types'
 import { cn } from '@/lib/utils'
 import Card from '@/components/ui/Card'
@@ -47,8 +47,9 @@ export default async function DashboardPage() {
     : ''
 
   // Logic Fix: Handle the 'total_weeks' or 'total_duration' aliasing
-  const totalWeeks = roadmap?.total_duration ?? roadmap?.total_weeks ?? 12
-  const weekProgress = Math.round((currentWeek / totalWeeks) * 100)
+  const totalWeeks = Math.max(1, roadmap?.total_duration ?? roadmap?.total_weeks ?? 12)
+  const completedWeeks = Math.max(0, currentWeek - 1)
+  const weekProgress = Math.round((completedWeeks / totalWeeks) * 100)
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -226,8 +227,9 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
+            { href: '/skills', Icon: Layers, label: 'My Skills', tone: 'bg-[var(--color-app-surface-cool)]', border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
               { href: `/project${week4Query}`, Icon: Target, label: 'Project Mentor', tone: 'bg-[var(--color-app-surface-mint)]', border: 'border-[#b7e1c3]', icon: 'text-[#188038]', hover: 'group-hover:text-[#188038]' },
               { href: `/interview${week4Query}`, Icon: Mic, label: 'Mock Interview', tone: 'bg-[var(--color-app-surface-cool)]', border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
               { href: `/career${week4Query}`, Icon: Star, label: 'Career Hub', tone: 'bg-[var(--color-app-surface-warm)]', border: 'border-[#f5d59a]', icon: 'text-[#f9ab00]', hover: 'group-hover:text-[#b06000]' },

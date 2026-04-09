@@ -36,7 +36,10 @@ export default async function ProgressPage() {
   const lessonsComplete = progress?.lessons_completed ?? 0
   const studyMins       = progress?.total_study_minutes ?? 0
   const studyHours      = Math.round(studyMins / 60)
-  const weekProgress    = roadmap ? Math.round((roadmap.current_week / roadmap.total_weeks) * 100) : 0
+  const totalWeeks      = Math.max(1, roadmap?.total_weeks ?? 1)
+  const currentWeek     = roadmap?.current_week ?? 1
+  const completedWeeks  = Math.max(0, currentWeek - 1)
+  const weekProgress    = roadmap ? Math.round((completedWeeks / totalWeeks) * 100) : 0
 
   const level      = Math.floor(xp / 500) + 1
   const xpInLevel  = xp % 500

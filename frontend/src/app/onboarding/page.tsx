@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAnalytics } from '@/hooks/useAnalytics'
 import { useToast } from '@/components/ui/Toast'
@@ -45,6 +46,8 @@ export default function OnboardingPage() {
   const supabase = createClient()
   const toast    = useToast()
   const { track } = useAnalytics()
+  const searchParams = useSearchParams()
+  const isNewSkillMode = searchParams.get('mode') === 'new-skill'
 
   const [step, setStep]     = useState<Step>('skill')
   const [data, setData]     = useState<Data>({ skill: '', level: '', goal: '', hours: '', uploadedFile: null })
@@ -86,7 +89,7 @@ export default function OnboardingPage() {
       const user = session?.user;
       if (!user) throw new Error('Authentication lost. Please log in again.');
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/roadmap/generate`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roadmap/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,6 +114,7 @@ export default function OnboardingPage() {
           goal: data.goal,
           hours_per_day: parseFloat(data.hours || '1'),
           used_book_upload: Boolean(data.uploadedFile),
+          onboarding_mode: isNewSkillMode ? 'new_skill' : 'first_skill',
         },
       })
 
@@ -126,7 +130,7 @@ export default function OnboardingPage() {
       // 1.5s delay to show the "Finalizing" animation
       setTimeout(() => {
         // Hard navigation is the ONLY way to clear that JSON sidebar error
-        window.location.assign('/dashboard');
+        window.location.assign(isNewSkillMode ? '/skills' : '/dashboard');
       }, 1500);
 
       return; // Stop any further local state updates
@@ -144,12 +148,17 @@ export default function OnboardingPage() {
 
         <div className="text-center mb-8">
           <span className="font-display font-black text-xl gradient-text">SkillMentor AI</span>
+          {isNewSkillMode && (
+            <p className="mt-2 text-xs" style={{ color: '#6B7A99' }}>
+              Add a new skill roadmap without affecting your existing skills.
+            </p>
+          )}
         </div>
 
         {step !== 'generating' && (
           <div className="mb-10">
             <div className="flex justify-between text-xs mb-2" style={{ color: '#6B7A99' }}>
-              <span>Setting up your learning path</span>
+              <span>{isNewSkillMode ? 'Adding your new skill path' : 'Setting up your learning path'}</span>
               <span>{stepIdx + 1} / {STEPS.length}</span>
             </div>
             <div className="h-1 rounded-full" style={{ background: '#1E2A42' }}>
@@ -163,9 +172,13 @@ export default function OnboardingPage() {
         {step === 'skill' && (
           <div className="animate-fade-up">
             <h2 className="font-display font-black text-3xl mb-2" style={{ letterSpacing: '-1px' }}>
-              What do you want to learn?
+              {isNewSkillMode ? 'What new skill do you want to add?' : 'What do you want to learn?'}
             </h2>
-            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>Type any skill — programming, design, data science, anything.</p>
+            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>
+              {isNewSkillMode
+                ? 'This creates a separate roadmap for your next skill.'
+                : 'Type any skill — programming, design, data science, anything.'}
+            </p>
             <input type="text" autoFocus value={data.skill}
               onChange={e => setData(d => ({ ...d, skill: e.target.value }))}
               placeholder="e.g. JavaScript, Python, React…"
@@ -363,7 +376,7 @@ export default function OnboardingPage() {
                 style={{ borderColor: '#4FFFA0' }} />
             </div>
             <h2 className="font-display font-black text-3xl mb-4" style={{ letterSpacing: '-1px' }}>
-              Building your roadmap…
+              {isNewSkillMode ? 'Adding your new skill roadmap…' : 'Building your roadmap…'}
             </h2>
             <p className="text-sm mb-10" style={{ color: '#6B7A99' }}>
               Gemini 3.1 Flash Lite Preview is designing your personalized learning path

@@ -73,15 +73,23 @@ async def _handle_voice_lifecycle(websocket: WebSocket, instruction: str, topic:
     # 1. Initial Greeting
     greeting_prompt = f"Give a warm, 2-sentence welcome for a lesson on {topic}. Ask the student one question about their experience with it."
     
-    initial_resp = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=greeting_prompt,
-        config=types.GenerateContentConfig(system_instruction=instruction)
-    )
-    
+    try:
+        initial_resp = await _generate_content_with_retry(client, greeting_prompt, instruction)
+        greeting_text = (initial_resp.text or "").strip()
+        if not greeting_text:
+            greeting_text = (
+                f"Welcome! We will cover {topic} step by step. "
+                "Tell me your current comfort level so I can adapt the pace."
+            )
+    except Exception:
+        greeting_text = (
+            f"Welcome! I am ready to help with {topic}. "
+            "The AI service is temporarily busy, so responses may be delayed for a few seconds."
+        )
+
     await websocket.send_text(json.dumps({
-        "type": "transcript_ai", 
-        "text": initial_resp.text.strip()
+        "type": "transcript_ai",
+        "text": greeting_text
     }))
 
     # 2. Continuous Interaction Loop
@@ -131,11 +139,7 @@ async def _handle_voice_lifecycle(websocket: WebSocket, instruction: str, topic:
 async def _stream_voice_response(websocket: WebSocket, client: Any, instruction: str, user_input: str):
     """Streams the AI response sentence-by-sentence to optimize for Text-to-Speech frontends."""
     try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=user_input,
-            config=types.GenerateContentConfig(system_instruction=instruction),
-        )
+        response = await _generate_content_with_retry(client, user_input, instruction)
 
         text = (response.text or "").strip()
         if not text:
@@ -183,3 +187,37 @@ def _log_session_stats(user_id: str, lesson_id: str, topic: str, skill: str, dur
         }).execute()
     except Exception as e:
         print(f"Analytics Logging Failed: {e}")
+
+
+def _is_transient_model_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return (
+        "503" in message
+        or "unavailable" in message
+        or "resource_exhausted" in message
+        or "rate limit" in message
+        or "quota" in message
+        or "temporarily" in message
+    )
+
+
+async def _generate_content_with_retry(client: Any, prompt: str, instruction: str, attempts: int = 3):
+    last_exc: Exception | None = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            return client.models.generate_content(
+                model=settings.gemini_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(system_instruction=instruction),
+            )
+        except Exception as exc:
+            last_exc = exc
+            if not _is_transient_model_error(exc) or attempt == attempts:
+                raise
+
+            # Exponential backoff: 0.5s, 1.0s, 2.0s
+            delay = 0.5 * (2 ** (attempt - 1))
+            await asyncio.sleep(delay)
+
+    raise RuntimeError(f"Model generation failed after retries: {last_exc}")

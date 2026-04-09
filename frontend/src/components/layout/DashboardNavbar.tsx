@@ -9,7 +9,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle'
 import SectionContainer from '@/components/ui/SectionContainer'
 import { 
   LayoutDashboard, Map, BarChart2, Trophy, 
-  LogOut, Menu, X, Flame, Star, Settings, Shield
+  LogOut, Menu, X, Flame, Star, Settings, Shield, BookOpen
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +21,7 @@ interface Props {
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { href: '/skills', label: 'My Skills', Icon: BookOpen },
   { href: '/daily-challenge', label: 'Daily Challenge', Icon: Flame },
   { href: '/roadmap', label: 'Roadmap', Icon: Map },
   { href: '/progress', label: 'Progress', Icon: BarChart2 },
@@ -38,34 +39,48 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
   const [displayXp, setDisplayXp] = useState(xpPoints)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
+  const isSupabaseLockAbort = (error: unknown) => {
+    if (!(error instanceof Error)) return false
+    return (
+      error.name === 'AbortError' &&
+      error.message.includes("Lock broken by another request with the 'steal' option")
+    )
+  }
+
   useEffect(() => {
     let mounted = true
 
     const hydrateStats = async () => {
-      const { data: authData } = await supabase.auth.getUser()
-      const uid = authData.user?.id
-      if (uid && mounted) setCurrentUserId(uid)
+      try {
+        const { data: authData } = await supabase.auth.getUser()
+        const uid = authData.user?.id
+        if (uid && mounted) setCurrentUserId(uid)
 
-      // Prefer page-provided values when present.
-      if (userName) setDisplayName(userName)
-      if (typeof streakDays === 'number') setDisplayStreak(streakDays)
-      if (typeof xpPoints === 'number') setDisplayXp(xpPoints)
+        // Prefer page-provided values when present.
+        if (userName) setDisplayName(userName)
+        if (typeof streakDays === 'number') setDisplayStreak(streakDays)
+        if (typeof xpPoints === 'number') setDisplayXp(xpPoints)
 
-      // If all values are provided, no need to fetch.
-      if (userName && streakDays > 0 && xpPoints > 0) return
+        // If all values are provided, no need to fetch.
+        if (userName && streakDays > 0 && xpPoints > 0) return
 
-      if (!uid || !mounted) return
+        if (!uid || !mounted) return
 
-      const [profileRes, progressRes] = await Promise.all([
-        supabase.from('profiles').select('full_name').eq('id', uid).single(),
-        supabase.from('user_progress').select('streak_days,xp_points').eq('user_id', uid).single(),
-      ])
+        const [profileRes, progressRes] = await Promise.all([
+          supabase.from('profiles').select('full_name').eq('id', uid).single(),
+          supabase.from('user_progress').select('streak_days,xp_points').eq('user_id', uid).single(),
+        ])
 
-      if (!mounted) return
-      const fullName = profileRes.data?.full_name
-      if (fullName) setDisplayName(fullName)
-      setDisplayStreak(progressRes.data?.streak_days ?? streakDays ?? 0)
-      setDisplayXp(progressRes.data?.xp_points ?? xpPoints ?? 0)
+        if (!mounted) return
+        const fullName = profileRes.data?.full_name
+        if (fullName) setDisplayName(fullName)
+        setDisplayStreak(progressRes.data?.streak_days ?? streakDays ?? 0)
+        setDisplayXp(progressRes.data?.xp_points ?? xpPoints ?? 0)
+      } catch (error) {
+        if (!isSupabaseLockAbort(error)) {
+          console.error('[DashboardNavbar] Failed to hydrate stats:', error)
+        }
+      }
     }
 
     hydrateStats()

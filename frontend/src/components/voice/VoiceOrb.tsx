@@ -1,6 +1,6 @@
 'use client'
 
-import { Mic, MicOff, Square, Loader2, Volume2 } from 'lucide-react'
+import { Mic, Square, Loader2, Volume2 } from 'lucide-react'
 import type { VoiceState } from '@/hooks/useVoice'
 
 interface VoiceOrbProps {
@@ -8,7 +8,6 @@ interface VoiceOrbProps {
   isMuted:       boolean
   onStart:       () => void
   onStop:        () => void
-  onMuteToggle:  () => void
   durationSeconds?: number
 }
 
@@ -26,7 +25,7 @@ function formatTime(s: number) {
   return `${m}:${String(s % 60).padStart(2, '0')}`
 }
 
-export function VoiceOrb({ state, isMuted, onStart, onStop, onMuteToggle, durationSeconds = 0 }: VoiceOrbProps) {
+export function VoiceOrb({ state, onStart, onStop, durationSeconds = 0 }: VoiceOrbProps) {
   const cfg      = STATE_CONFIG[state]
   const isActive = state !== 'idle' && state !== 'error'
 
@@ -63,26 +62,6 @@ export function VoiceOrb({ state, isMuted, onStart, onStop, onMuteToggle, durati
           <p className="text-xs mt-1" style={{ color: '#6B7A99' }}>{formatTime(durationSeconds)}</p>
         )}
       </div>
-
-      {/* Controls */}
-      {isActive && (
-        <div className="flex items-center gap-3">
-          <button onClick={onMuteToggle}
-            className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs transition-all border"
-            style={{
-              borderColor: isMuted ? '#FF6B6B' : '#1E2A42',
-              background:  isMuted ? 'rgba(255,107,107,0.1)' : 'transparent',
-              color:       isMuted ? '#FF6B6B' : '#6B7A99',
-            }}>
-            {isMuted ? <><MicOff size={12} />Unmute</> : <><Mic size={12} />Mute</>}
-          </button>
-          <button onClick={onStop}
-            className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: '#FF6B6B', color: '#FF6B6B', background: 'rgba(255,107,107,0.08)' }}>
-            <Square size={11} /> End Session
-          </button>
-        </div>
-      )}
     </div>
   )
 }

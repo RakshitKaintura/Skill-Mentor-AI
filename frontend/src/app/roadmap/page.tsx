@@ -29,8 +29,10 @@ export default async function RoadmapPage() {
 
   const completedTopics = new Set((lessons ?? []).map((l: { topic: string }) => l.topic))
   const phases = (roadmap?.phases ?? []) as Roadmap['phases']
-  const totalWeeks = roadmap?.total_weeks ?? 12
+  const totalWeeks = Math.max(1, roadmap?.total_weeks ?? 12)
   const currentWeek = roadmap?.current_week ?? 1
+  const completedWeeks = Math.max(0, currentWeek - 1)
+  const overallProgress = Math.round((completedWeeks / totalWeeks) * 100)
 
   return (
     <div className="min-h-screen page-tone-cool text-[var(--color-app-text-primary)]">
@@ -61,7 +63,7 @@ export default async function RoadmapPage() {
           <div className="h-2 w-full rounded-full bg-[var(--color-app-border)] overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#4FFFA0] to-[#5B8EFF]"
-              style={{ width: `${Math.round(((roadmap?.current_week ?? 0) / totalWeeks) * 100)}%` }}
+              style={{ width: `${overallProgress}%` }}
             />
           </div>
           <div className="mt-2 flex justify-between text-xs text-[var(--color-app-text-secondary)]">

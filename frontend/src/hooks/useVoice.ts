@@ -34,6 +34,20 @@ export function useVoice(options: UseVoiceOptions) {
   const hasServerAudioRef = useRef(false)
   const isPausedRef = useRef(false)
 
+  const normalizeVoiceError = useCallback((raw: string) => {
+    const lower = raw.toLowerCase()
+    if (
+      lower.includes('503') ||
+      lower.includes('unavailable') ||
+      lower.includes('resource_exhausted') ||
+      lower.includes('high demand') ||
+      lower.includes('rate limit')
+    ) {
+      return 'Voice AI is temporarily busy. Please try again in a few seconds.'
+    }
+    return raw
+  }, [])
+
   const pickPreferredFemaleVoice = useCallback((): SpeechSynthesisVoice | null => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null
 
@@ -169,7 +183,7 @@ export function useVoice(options: UseVoiceOptions) {
             break
           }
           case 'interrupted': setState('listening'); break
-          case 'error': setError(msg.message); setState('error'); break
+          case 'error': setError(normalizeVoiceError(msg.message ?? 'Voice session failed.')); setState('error'); break
         }
       }
 
@@ -180,11 +194,11 @@ export function useVoice(options: UseVoiceOptions) {
       const msg = e instanceof Error ? e.message : 'Failed to start voice'
       setError(msg.includes('Permission denied') || msg.includes('NotAllowedError')
         ? 'Microphone access denied. Please allow microphone in your browser settings.'
-        : msg
+        : normalizeVoiceError(msg)
       )
       setState('error')
     }
-  }, [state, options, isMuted, addMessage, speakAssistantText])
+  }, [state, options, isMuted, addMessage, speakAssistantText, normalizeVoiceError])
 
   const stop = useCallback(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {

@@ -73,16 +73,31 @@ export default function RegisterPage() {
       })
       if (error) throw error
 
-      if (data.user) {
-        const { error: pe } = await supabase.from('profiles').insert({
-          id: data.user.id, full_name: form.name, email: form.email, onboarding_completed: false,
-        })
+      // Email confirmation flow: Supabase returns a user but no active session.
+      // Show confirmation UI immediately and do not block on profile writes.
+      if (data.user && !data.session) {
+        setEmailSent(true)
+        return
+      }
+
+      if (data.user && data.session) {
+        const { error: pe } = await supabase.from('profiles').upsert(
+          {
+            id: data.user.id,
+            full_name: form.name,
+            email: form.email,
+            onboarding_completed: false,
+          },
+          { onConflict: 'id' }
+        )
         if (pe && pe.code !== '23505') throw pe
 
-        if (!data.session) { setEmailSent(true); return }
         toast.success('Account created! Setting up your learning path…')
         router.push('/onboarding')
+        return
       }
+
+      setEmailSent(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       if (msg.includes('already registered')) {
@@ -98,7 +113,7 @@ export default function RegisterPage() {
       } else if (msg.includes('Failed to fetch')) {
         toast.error('Unable to reach Supabase. Verify .env.local values and network connectivity.')
       } else {
-        toast.error(msg)
+        toast.error(msg || 'Unable to create account right now. Please try again.')
       }
     } finally {
       setLoading(false)

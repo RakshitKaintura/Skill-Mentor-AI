@@ -8,8 +8,17 @@ import SectionContainer from '@/components/ui/SectionContainer'
  * Orchestrates data fetching for the active lesson session.
  * Ensures the user is authenticated, onboarded, and has an active roadmap.
  */
-export default async function CurrentLessonPage() {
+interface CurrentLessonPageProps {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function CurrentLessonPage({ searchParams }: CurrentLessonPageProps) {
   const supabase = await createClient()
+  const resolvedSearchParams = (await searchParams) ?? {}
+  const selectedRoadmapIdParam = resolvedSearchParams.roadmap_id
+  const selectedRoadmapId = Array.isArray(selectedRoadmapIdParam)
+    ? selectedRoadmapIdParam[0]
+    : selectedRoadmapIdParam
 
   // 1. Authenticate User
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,14 +35,32 @@ export default async function CurrentLessonPage() {
     redirect('/onboarding')
   }
 
-  // 3. Retrieve Latest Active Roadmap
-  const { data: roadmap } = await supabase
-    .from('roadmaps')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  // 3. Retrieve roadmap (explicit roadmap_id if provided, else latest)
+
+  let roadmap = null
+
+  if (selectedRoadmapId) {
+    const { data: selectedRoadmap } = await supabase
+      .from('roadmaps')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('id', selectedRoadmapId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    roadmap = selectedRoadmap
+  }
+
+  if (!roadmap) {
+    const { data: latestRoadmap } = await supabase
+      .from('roadmaps')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    roadmap = latestRoadmap
+  }
 
   if (!roadmap) {
     redirect('/onboarding')
@@ -45,6 +72,7 @@ export default async function CurrentLessonPage() {
     .from('lessons')
     .select('id')
     .eq('user_id', user.id)
+    .eq('roadmap_id', roadmap.id)
     .eq('topic', roadmap.current_topic)
     .eq('completed', false)
     .order('created_at', { ascending: false })

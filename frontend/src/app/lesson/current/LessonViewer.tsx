@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLesson } from '@/hooks/useLesson'
@@ -15,7 +15,7 @@ import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft, Mic, MessageCircle, FileText,
-  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, Volume2, Pause, Play, Send
+  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, Volume2, Pause, Play, Send, MicOff
 } from 'lucide-react'
 
 interface Props {
@@ -37,18 +37,6 @@ interface DoubtResult {
   code_example: string | null
 }
 
-type SpeechRecognitionLike = {
-  lang: string
-  interimResults: boolean
-  maxAlternatives: number
-  continuous: boolean
-  start: () => void
-  stop: () => void
-  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
-  onerror: ((event: { error: string }) => void) | null
-  onend: (() => void) | null
-}
-
 export function LessonViewer({
   roadmapId, topic, skill, level, phaseName, weekNumber, existingLessonId, userName
 }: Props) {
@@ -66,8 +54,6 @@ export function LessonViewer({
   const [notesLoading, setNotesLoading] = useState(false)
   const [completing, setCompleting]     = useState(false)
   const [startTime]                     = useState(Date.now())
-  const [voiceDoubtLoading, setVoiceDoubtLoading] = useState(false)
-  const [voiceDoubtError, setVoiceDoubtError] = useState<string | null>(null)
   const [voiceDoubtQuestion, setVoiceDoubtQuestion] = useState('')
   const [voiceDoubtResult, setVoiceDoubtResult] = useState<DoubtResult | null>(null)
   const [voiceTextInput, setVoiceTextInput] = useState('')
@@ -87,10 +73,7 @@ export function LessonViewer({
       ].join(' ')
     }
 
-  const [capturingDoubt, setCapturingDoubt] = useState(false)
-  const [autoSpeakDoubt, setAutoSpeakDoubt] = useState(true)
   const [speakingDoubt, setSpeakingDoubt] = useState(false)
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
 
   useEffect(() => {
     if (existingLessonId) fetchLesson(existingLessonId)
@@ -103,8 +86,6 @@ export function LessonViewer({
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel()
       }
-      recognitionRef.current?.stop()
-      recognitionRef.current = null
     }
   }, [])
 
@@ -200,51 +181,6 @@ export function LessonViewer({
     toast.error('Failed to generate notes.')
   }
 
-  const askDoubt = async (question: string) => {
-    if (!lesson) {
-      setVoiceDoubtError('Lesson is still loading. Try again in a moment.')
-      return
-    }
-
-    setVoiceDoubtLoading(true)
-    setVoiceDoubtError(null)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/doubt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id,
-          lesson_id: lesson.id,
-          topic,
-          skill,
-          question,
-        }),
-      })
-
-      if (!res.ok) throw new Error('Failed to get doubt answer')
-
-      const data: DoubtResult = await res.json()
-      const resumePrompt = getResumePrompt(question, data)
-      setVoiceDoubtQuestion(question)
-      setVoiceDoubtResult(data)
-      if (autoSpeakDoubt) {
-        speakDoubtAnswer(data, resumePrompt)
-      } else if (voice.state !== 'idle') {
-        voice.resume(resumePrompt)
-      }
-      toast.success('Doubt answered. Resume voice whenever you are ready.')
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Failed to ask doubt'
-      setVoiceDoubtError(message)
-      toast.error(message)
-    } finally {
-      setVoiceDoubtLoading(false)
-    }
-  }
-
   const handleTextDoubtStart = (question: string) => {
     setVoiceDoubtQuestion(question)
     setVoiceDoubtResult(null)
@@ -289,57 +225,6 @@ export function LessonViewer({
       voice.sendText(text)
     }
     setVoiceTextInput('')
-  }
-
-  const startVoiceDoubtCapture = () => {
-    if (typeof window === 'undefined') return
-
-    type SpeechWindow = Window & {
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike
-      SpeechRecognition?: new () => SpeechRecognitionLike
-    }
-
-    const speechWindow = window as SpeechWindow
-    const SpeechRecognitionCtor = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-
-    if (!SpeechRecognitionCtor) {
-      setVoiceDoubtError('Voice doubt capture is not supported in this browser.')
-      return
-    }
-
-    if (voice.state !== 'idle' && !voice.isPaused) {
-      voice.pause()
-    }
-
-    recognitionRef.current?.stop()
-    const recognition = new SpeechRecognitionCtor()
-    recognition.lang = 'en-US'
-    recognition.interimResults = false
-    recognition.maxAlternatives = 1
-    recognition.continuous = false
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript?.trim() ?? ''
-      if (!transcript) {
-        setVoiceDoubtError('Could not hear your question clearly. Please try again.')
-        return
-      }
-      void askDoubt(transcript)
-    }
-
-    recognition.onerror = (event) => {
-      setVoiceDoubtError(`Voice capture failed: ${event.error}`)
-    }
-
-    recognition.onend = () => {
-      setCapturingDoubt(false)
-      recognitionRef.current = null
-    }
-
-    recognitionRef.current = recognition
-    setVoiceDoubtError(null)
-    setCapturingDoubt(true)
-    recognition.start()
   }
 
   const steps      = lesson?.steps ?? []
@@ -586,7 +471,7 @@ export function LessonViewer({
                   : 'Voice session active. Speak naturally — interrupt anytime.'}
               </p>
               <VoiceOrb state={voice.state} isMuted={voice.isMuted}
-                onStart={voice.start} onStop={voice.stop} onMuteToggle={voice.toggleMute}
+                onStart={voice.start} onStop={voice.stop}
                 durationSeconds={voice.durationSeconds} />
 
               {voice.state !== 'idle' && voice.state !== 'error' && (
@@ -615,38 +500,21 @@ export function LessonViewer({
                   </button>
 
                   <button
-                    onClick={startVoiceDoubtCapture}
-                    disabled={capturingDoubt || voiceDoubtLoading}
-                    className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all disabled:opacity-50"
-                    style={{ borderColor: '#5B8EFF', color: '#5B8EFF', background: 'rgba(91,142,255,0.08)' }}
-                  >
-                    {capturingDoubt || voiceDoubtLoading
-                      ? <><Loader2 size={12} className="animate-spin" />Listening for doubt…</>
-                      : <><Mic size={12} />Ask Doubt by Voice</>}
-                  </button>
-
-                  <button
-                    onClick={() => setAutoSpeakDoubt(v => !v)}
+                    onClick={voice.toggleMute}
                     className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all"
                     style={{
-                      borderColor: autoSpeakDoubt
-                        ? 'color-mix(in oklab, #a142f4 42%, var(--color-app-border))'
-                        : 'var(--color-app-border)',
-                      color: autoSpeakDoubt ? '#7e57c2' : 'var(--color-app-text-secondary)',
-                      background: autoSpeakDoubt
-                        ? 'color-mix(in oklab, var(--color-app-surface-lavender) 72%, var(--color-app-surface) 28%)'
-                        : 'var(--color-app-surface)',
+                      borderColor: voice.isMuted
+                        ? 'color-mix(in oklab, #188038 42%, var(--color-app-border))'
+                        : 'color-mix(in oklab, #5B8EFF 38%, var(--color-app-border))',
+                      color: voice.isMuted ? '#188038' : '#5B8EFF',
+                      background: voice.isMuted
+                        ? 'color-mix(in oklab, var(--color-app-surface-mint) 72%, var(--color-app-surface) 28%)'
+                        : 'color-mix(in oklab, var(--color-app-surface-cool) 72%, var(--color-app-surface) 28%)',
                     }}
                   >
-                    {autoSpeakDoubt ? 'Auto Speak: On' : 'Auto Speak: Off'}
+                    {voice.isMuted ? <><MicOff size={12} />Unmute</> : <><Mic size={12} />Mute</>}
                   </button>
                 </div>
-              )}
-
-              {(capturingDoubt || voiceDoubtLoading) && (
-                <p className="mt-3 text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>
-                  {capturingDoubt ? 'Speak your doubt now. We will pause the lesson and capture your question.' : 'Generating answer for your spoken doubt…'}
-                </p>
               )}
 
               <div className="mt-5 text-left">
@@ -678,7 +546,6 @@ export function LessonViewer({
                 </p>
               </div>
 
-              {voiceDoubtError && <p className="mt-3 text-xs" style={{ color: '#FF6B6B' }}>{voiceDoubtError}</p>}
               {voice.error && <p className="mt-4 text-xs" style={{ color: '#FF6B6B' }}>{voice.error}</p>}
             </div>
 

@@ -1,5 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+let browserClient: ReturnType<typeof createBrowserClient> | null = null
+
 function getEnv(): [string, string] {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -23,13 +25,17 @@ function getEnv(): [string, string] {
  * This client automatically handles session persistence using document.cookie.
  */
 export function createClient() {
+  if (browserClient) return browserClient
+
   const [supabaseUrl, supabaseAnonKey] = getEnv()
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
   })
+
+  return browserClient
 }

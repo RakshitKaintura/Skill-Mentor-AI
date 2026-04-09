@@ -39,8 +39,11 @@ function LoginForm() {
       router.push(profile?.onboarding_completed ? '/dashboard' : '/onboarding')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
+      const lower = msg.toLowerCase()
       if (msg.includes('Invalid login credentials')) toast.error('Wrong email or password. Please try again.')
-      else if (msg.includes('Email not confirmed'))  toast.warning('Please confirm your email first.')
+      else if (lower.includes('email not confirmed') || (lower.includes('confirm') && lower.includes('email'))) {
+        toast.warning('Please check your mail and confirm your email first.')
+      }
       else if (msg.includes('too many requests'))    toast.error('Too many attempts. Please wait a minute.')
       else if (msg.includes('Failed to fetch'))      toast.error('Unable to reach Supabase. Verify .env.local and your network connectivity.')
       else toast.error(msg || 'Sign in failed. Please try again.')
