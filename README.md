@@ -277,3 +277,7 @@ This repository appears to be an actively developed full-stack learning platform
 ## License
 
 Add your preferred license here, for example `MIT`.
+
+
+"E:\DOWNLOADS\DATA SCIENCE\PROFESSIONAL PROJECTS\Skill Mentor AI"
+what new things we can do or updates on current project we can do to make this project more better 

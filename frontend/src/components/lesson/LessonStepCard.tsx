@@ -1,6 +1,7 @@
 'use client'
 
 import { CodeBlock } from './CodeBlock'
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 import type { LessonStep } from '@/hooks/useLesson'
 
 interface Props {
@@ -96,13 +97,7 @@ export function LessonStepCard({ step, index, isActive, onClick }: Props) {
       {isActive && (
         <div className="border-t px-5 pb-6" style={{ borderColor: cfg.color + '20' }}>
           <div className="mt-4 space-y-4">
-            <div className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>
-              {step.content.split('\n\n').map((para, i) => (
-                <p key={i} className={i > 0 ? 'mt-3' : ''}>
-                  {para}
-                </p>
-              ))}
-            </div>
+            <MarkdownRenderer content={step.content} />
             {step.code_snippet && (
               <div className="mt-4">
                 <CodeBlock

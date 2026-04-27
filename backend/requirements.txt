@@ -16,3 +16,4 @@ pytest
 pytest-asyncio
 reportlab
 docling
+slowapi

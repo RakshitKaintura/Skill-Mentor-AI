@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAnalytics } from '@/hooks/useAnalytics'
 import { useToast } from '@/components/ui/Toast'
+import { AgenticTerminal } from '@/components/ui/AgenticTerminal'
 import { ArrowRight, ArrowLeft, CheckCircle, Loader2, Upload } from 'lucide-react'
 
 type Step = 'skill' | 'level' | 'goal' | 'time' | 'upload' | 'generating'
@@ -42,7 +43,9 @@ const TIME_OPTIONS = [
 
 const STEPS: Step[] = ['skill','level','goal','time','upload']
 
-export default function OnboardingPage() {
+import { Suspense } from 'react'
+
+function OnboardingContent() {
   const supabase = createClient()
   const toast    = useToast()
   const { track } = useAnalytics()
@@ -366,39 +369,19 @@ export default function OnboardingPage() {
 
         {/* STEP: GENERATING */}
         {step === 'generating' && (
-          <div className="animate-fade-up text-center py-12">
-            <div className="relative inline-block mb-8">
-              <div className="w-20 h-20 rounded-full border-2 flex items-center justify-center"
-                style={{ borderColor: '#4FFFA0', background: 'rgba(79,255,160,0.08)' }}>
-                <span className="text-3xl">🧠</span>
-              </div>
-              <div className="absolute inset-0 rounded-full border-2 animate-ping opacity-20"
-                style={{ borderColor: '#4FFFA0' }} />
-            </div>
-            <h2 className="font-display font-black text-3xl mb-4" style={{ letterSpacing: '-1px' }}>
-              {isNewSkillMode ? 'Adding your new skill roadmap…' : 'Building your roadmap…'}
-            </h2>
-            <p className="text-sm mb-10" style={{ color: '#6B7A99' }}>
-              Gemini 3.1 Flash Lite Preview is designing your personalized learning path
-            </p>
-            <div className="flex flex-col gap-3 max-w-sm mx-auto text-left">
-              {[
-                '🔍 Analyzing your skill level…',
-                '📚 Scanning knowledge sources…',
-                '🗺️  Designing your learning path…',
-                '📅 Scheduling weekly milestones…',
-                '✅ Finalizing your roadmap…',
-              ].map((msg, i) => (
-                <div key={i} className="flex items-center gap-3 text-sm"
-                  style={{ color: '#6B7A99', animation: `fadeUp 0.5s ${i * 0.4}s ease both` }}>
-                  <Loader2 size={13} className="animate-spin" style={{ color: '#4FFFA0' }} />
-                  {msg}
-                </div>
-              ))}
-            </div>
+          <div className="animate-fade-up w-full py-8">
+            <AgenticTerminal agentName="Roadmap Architect" />
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <OnboardingContent />
+    </Suspense>
   )
 }

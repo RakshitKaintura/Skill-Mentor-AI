@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useLesson } from '@/hooks/useLesson'
 import { useVoice } from '@/hooks/useVoice'
 import { useAnalytics } from '@/hooks/useAnalytics'
-import { createClient } from '@/lib/supabase/client'
 import { LessonStepCard } from '@/components/lesson/LessonStepCard'
 import { DoubtPanel } from '@/components/lesson/DoubtPanel'
 import { VoiceOrb } from '@/components/voice/VoiceOrb'
 import { VoiceTranscript } from '@/components/voice/VoiceTranscript'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
+import { AgenticTerminal } from '@/components/ui/AgenticTerminal'
 import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft, Mic, MessageCircle, FileText,
@@ -40,7 +41,6 @@ interface DoubtResult {
 export function LessonViewer({
   roadmapId, topic, skill, level, phaseName, weekNumber, existingLessonId, userName
 }: Props) {
-  const supabase = createClient()
   const router = useRouter()
   const toast  = useToast()
   const { track } = useAnalytics()
@@ -251,23 +251,20 @@ export function LessonViewer({
     return (
       <div className="min-h-screen page-tone-mint">
         <DashboardNavbar userName={userName} />
-        <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full border-2 flex items-center justify-center"
-              style={{ borderColor: '#4FFFA0', background: 'rgba(79,255,160,0.08)' }}>
-              <span className="text-3xl">🧠</span>
+        <div className="flex flex-col items-center justify-center min-h-[80vh] px-5 w-full">
+          {generating ? (
+            <AgenticTerminal agentName="Lesson Teacher" />
+          ) : (
+            <div className="text-center animate-fade-up">
+              <Loader2 size={36} className="animate-spin mx-auto mb-4" style={{ color: '#4FFFA0' }} />
+              <h2 className="font-display font-black text-2xl mb-2" style={{ letterSpacing: '-0.5px' }}>
+                Loading lesson…
+              </h2>
+              <p className="text-sm" style={{ color: 'var(--color-app-text-secondary)' }}>
+                Fetching saved lesson
+              </p>
             </div>
-            <div className="absolute inset-0 rounded-full border-2 animate-ping opacity-20"
-              style={{ borderColor: '#4FFFA0' }} />
-          </div>
-          <div className="text-center">
-            <h2 className="font-display font-black text-2xl mb-2" style={{ letterSpacing: '-0.5px' }}>
-              {generating ? 'Preparing your lesson…' : 'Loading lesson…'}
-            </h2>
-            <p className="text-sm" style={{ color: 'var(--color-app-text-secondary)' }}>
-              {generating ? 'Gemini 3.1 Flash Lite Preview is crafting content just for you' : 'Fetching saved lesson'}
-            </p>
-          </div>
+          )}
         </div>
       </div>
     )
@@ -563,7 +560,7 @@ export function LessonViewer({
                   }}
                 >
                   <p className="text-xs font-bold mb-2" style={{ color: '#188038' }}>EXPLANATION</p>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>{voiceDoubtResult.answer}</p>
+                  <MarkdownRenderer content={voiceDoubtResult.answer} />
                 </div>
                 <div
                   className="p-4 rounded-sm"
@@ -573,7 +570,7 @@ export function LessonViewer({
                   }}
                 >
                   <p className="text-xs font-bold mb-2" style={{ color: 'color-mix(in oklab, var(--color-app-text-primary) 74%, #b06000)' }}>ANALOGY</p>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>{voiceDoubtResult.analogy}</p>
+                  <MarkdownRenderer content={voiceDoubtResult.analogy} />
                 </div>
                 <div className="flex justify-end">
                   <div className="flex items-center gap-2">

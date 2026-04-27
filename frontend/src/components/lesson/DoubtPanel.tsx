@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Send, X, MessageCircle } from 'lucide-react'
 import { CodeBlock } from '@/components/lesson/CodeBlock'
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 
 interface DoubtPanelProps {
   topic: string
@@ -130,7 +131,7 @@ export function DoubtPanel({ topic, skill, lessonId, onClose, onAskStart, onAskC
             }}
           >
             <p className="mb-2 text-xs font-bold" style={{ color: '#188038' }}>EXPLANATION</p>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>{result.answer}</p>
+            <MarkdownRenderer content={result.answer} />
           </div>
           <div
             className="rounded-sm p-4"
@@ -140,7 +141,7 @@ export function DoubtPanel({ topic, skill, lessonId, onClose, onAskStart, onAskC
             }}
           >
             <p className="mb-2 text-xs font-bold" style={{ color: 'color-mix(in oklab, var(--color-app-text-primary) 74%, #b06000)' }}>ANALOGY</p>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-app-text-primary)' }}>{result.analogy}</p>
+            <MarkdownRenderer content={result.analogy} />
           </div>
           {result.code_example && (
             <div>

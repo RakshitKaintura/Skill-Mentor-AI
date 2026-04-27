@@ -6,6 +6,7 @@ import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
 import { buttonClassName } from '@/components/ui/Button'
+import { DeleteSkillButton } from '@/components/skills/DeleteSkillButton'
 import type { Roadmap, UserProgress } from '@/types'
 
 const GOAL_LABEL: Record<string, string> = {
@@ -109,9 +110,12 @@ export default async function SkillsPage() {
                         {roadmap.level} · {GOAL_LABEL[roadmap.goal] ?? roadmap.goal}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[var(--color-app-surface-cool)] px-2.5 py-1 text-xs font-semibold text-[var(--color-app-primary)]">
-                      Week {currentWeek}/{totalWeeks}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-[var(--color-app-surface-cool)] px-2.5 py-1 text-xs font-semibold text-[var(--color-app-primary)]">
+                        Week {currentWeek}/{totalWeeks}
+                      </span>
+                      <DeleteSkillButton roadmapId={roadmap.id} skillName={roadmap.skill} />
+                    </div>
                   </div>
 
                   <div className="mb-3 grid grid-cols-2 gap-3 text-xs text-[var(--color-app-text-secondary)]">

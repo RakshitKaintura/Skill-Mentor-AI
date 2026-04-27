@@ -1,5 +1,6 @@
 @import "tailwindcss";
-
+@plugin "@tailwindcss/typography";
+@import "highlight.js/styles/github-dark.css";
 @theme {
   --color-app-primary: #1a73e8;
   --color-app-bg: #eef2f7;

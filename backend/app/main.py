@@ -5,6 +5,12 @@ Final backend orchestration for all 8 AI Agents.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 from app.core.config import get_settings
 from app.core.gemini import get_gemini_client
@@ -53,6 +59,11 @@ app = FastAPI(
     docs_url="/docs" if settings.app_env == "development" else None,
     redoc_url="/redoc" if settings.app_env == "development" else None,
 )
+
+# 3.5 Rate Limiting Configuration
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # 4. CORS Configuration: Sanitizing origins
 # Professional practice: Strip trailing slashes to prevent browser CORS blocks

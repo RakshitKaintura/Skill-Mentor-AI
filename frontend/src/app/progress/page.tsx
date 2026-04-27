@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect }     from 'next/navigation'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
-import { BarChart2, Flame, BookOpen, Clock, Trophy, Target, CheckCircle, TrendingUp } from 'lucide-react'
+import { BarChart2, Flame, BookOpen, Clock, Trophy, Target, CheckCircle, TrendingUp, Activity } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
+import ActivityChart from '@/components/analytics/ActivityChart'
 
 export default async function ProgressPage() {
   const supabase = await createClient()
@@ -27,6 +28,35 @@ export default async function ProgressPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(10)
+
+  // Fetch activity for chart (last 7 days)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+  
+  const { data: activityLessons } = await supabase
+    .from('lessons')
+    .select('created_at')
+    .eq('user_id', user.id)
+    .eq('completed', true)
+    .gte('created_at', sevenDaysAgo.toISOString())
+
+  // Process data for Recharts
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+
+  const activityData = last7Days.map(dateStr => ({
+    date: dateStr,
+    lessons: 0
+  }))
+
+  activityLessons?.forEach((lesson: { created_at: string }) => {
+    const lessonDateStr = new Date(lesson.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const dayData = activityData.find(d => d.date === lessonDateStr)
+    if (dayData) dayData.lessons += 1
+  })
 
   const { count: doubtCount } = await supabase
     .from('doubts').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
@@ -118,6 +148,17 @@ export default async function ProgressPage() {
             </Card>
           ))}
         </div>
+
+        {/* Learning Activity Chart */}
+        <Card className="mb-6 bg-[var(--color-app-surface)]">
+          <div className="flex items-center gap-2 mb-6">
+            <Activity size={16} style={{ color: '#4FFFA0' }} />
+            <h3 className="font-display font-bold text-base">Learning Activity (Last 7 Days)</h3>
+          </div>
+          <div className="h-[250px] w-full">
+            <ActivityChart data={activityData} />
+          </div>
+        </Card>
 
         <div className="grid md:grid-cols-2 gap-6">
 

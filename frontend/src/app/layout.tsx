@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { Manrope, Sora } from 'next/font/google'
 import { Toaster } from 'sonner'
 import AnalyticsTracker from '@/components/AnalyticsTracker'
+import { ThemeProvider } from '@/components/ThemeProvider'
 import './globals.css'
 
 const manrope = Manrope({
@@ -51,21 +52,23 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="bg-[var(--color-app-bg)] text-[var(--color-app-text-primary)] font-sans antialiased selection:bg-[#cdeaf7] selection:text-[var(--color-app-text-primary)]">
-        <Suspense fallback={null}>
-          <AnalyticsTracker />
-        </Suspense>
+        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+          <Suspense fallback={null}>
+            <AnalyticsTracker />
+          </Suspense>
 
-        <main className="relative z-10 min-h-screen">
-          {children}
-        </main>
+          <main className="relative z-10 min-h-screen">
+            {children}
+          </main>
 
-        <Toaster
-          position="bottom-right"
-          theme="light"
-          richColors
-          closeButton
-          expand={false}
-        />
+          <Toaster
+            position="bottom-right"
+            theme="system"
+            richColors
+            closeButton
+            expand={false}
+          />
+        </ThemeProvider>
       </body>
     </html>
   )

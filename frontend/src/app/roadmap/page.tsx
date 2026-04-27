@@ -4,6 +4,7 @@ import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Link from 'next/link'
 import { Play, Map, Target, Trophy } from 'lucide-react'
 import type { Roadmap } from '@/types'
+import { ShareButton } from '@/components/roadmap/ShareButton'
 import { cn } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
@@ -50,9 +51,12 @@ export default async function RoadmapPage() {
               {roadmap?.total_weeks} week journey · {phases.length} phases · Week {currentWeek} of {totalWeeks}
             </p>
           </div>
-          <Link href="/lesson/current" className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-app-primary)] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1765cc]">
-            <Play size={14} /> Continue Learning
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {roadmap?.id && <ShareButton roadmapId={roadmap.id} />}
+            <Link href="/lesson/current" className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-app-primary)] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1765cc] transition-colors">
+              <Play size={14} /> Continue Learning
+            </Link>
+          </div>
         </div>
 
         <Card className="mb-6 bg-[var(--color-app-surface-cool)]">
