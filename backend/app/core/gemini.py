@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import AsyncGenerator
 
 from google import genai
 from google.genai import types
@@ -64,6 +65,58 @@ async def generate_mentor_response(prompt: str, role_description: str) -> str:
         config=config,
     )
     return response.text
+
+
+async def stream_mentor_response(
+    prompt: str,
+    role_description: str,
+) -> AsyncGenerator[dict, None]:
+    """
+    Async generator that streams Gemini responses chunk-by-chunk.
+
+    Yields dicts with two possible shapes:
+      - {"type": "thought", "text": "<AI reasoning chunk>"}
+      - {"type": "text",    "text": "<AI answer chunk>"}
+      - {"type": "done"}
+      - {"type": "error",  "text": "<error message>"}
+
+    Thought parts come from Gemini's ThinkingConfig and represent
+    the model's internal reasoning chain before it produces its answer.
+    These are surfaced to the user as the "AI Thought Process" panel.
+    """
+    settings = get_settings()
+    client = get_ai_client()
+    config = get_mentor_model_config(role_description)
+
+    try:
+        async for chunk in await client.aio.models.generate_content_stream(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=config,
+        ):
+            if not chunk.candidates:
+                continue
+
+            for candidate in chunk.candidates:
+                if not candidate.content or not candidate.content.parts:
+                    continue
+
+                for part in candidate.content.parts:
+                    # Gemini separates thought parts from answer parts
+                    # via the `thought` boolean attribute on each Part.
+                    part_text = getattr(part, "text", None)
+                    is_thought = getattr(part, "thought", False)
+
+                    if part_text:
+                        if is_thought:
+                            yield {"type": "thought", "text": part_text}
+                        else:
+                            yield {"type": "text", "text": part_text}
+
+        yield {"type": "done"}
+
+    except Exception as exc:
+        yield {"type": "error", "text": str(exc)}
 
 
 async def check_model_health() -> bool:

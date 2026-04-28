@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useLesson } from '@/hooks/useLesson'
 import { useVoice } from '@/hooks/useVoice'
 import { useAnalytics } from '@/hooks/useAnalytics'
+import { useStreamingAI } from '@/hooks/useStreamingAI'
 import { LessonStepCard } from '@/components/lesson/LessonStepCard'
 import { DoubtPanel } from '@/components/lesson/DoubtPanel'
 import { VoiceOrb } from '@/components/voice/VoiceOrb'
@@ -13,9 +14,11 @@ import { VoiceTranscript } from '@/components/voice/VoiceTranscript'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 import { AgenticTerminal } from '@/components/ui/AgenticTerminal'
+import { ThoughtProcess } from '@/components/ui/ThoughtProcess'
+import { FocusTimer }    from '@/components/ui/FocusTimer'
 import { useToast } from '@/components/ui/Toast'
 import {
-  ArrowLeft, Mic, MessageCircle, FileText,
+  ArrowLeft, Mic, MessageCircle, FileText, Timer,
   CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, Volume2, Pause, Play, Send, MicOff
 } from 'lucide-react'
 
@@ -30,7 +33,7 @@ interface Props {
   userName:         string
 }
 
-type PanelMode = 'lesson' | 'voice' | 'doubt'
+type PanelMode = 'lesson' | 'voice' | 'doubt' | 'focus'
 
 interface DoubtResult {
   answer:       string
@@ -48,6 +51,19 @@ export function LessonViewer({
   const { lesson, loading, error, generating, generateLesson, fetchLesson, completeLesson, generateNotes } = useLesson()
   const voice = useVoice({ topic, skill, level,
     lessonContext: lesson?.steps.map(s => `${s.title}: ${s.content}`).join('\n') })
+
+  // ── AI Thought Process Streaming ────────────────────────────
+  // We stream a topic overview so the AI's reasoning is visible
+  // the moment the lesson content loads.
+  const streaming = useStreamingAI({
+    prompt:    `Explain the key concepts and learning objectives for "${topic}" in ${skill}`,
+    context:   'lesson',
+    topic,
+    skill,
+    level,
+    userId:    undefined, // populated after auth resolves
+    roadmapId,
+  })
 
   const [activeStep, setActiveStep]     = useState(0)
   const [panel, setPanel]               = useState<PanelMode>('lesson')
@@ -80,6 +96,14 @@ export function LessonViewer({
     else generateLesson({ roadmap_id: roadmapId, topic, skill, level, phase_name: phaseName, week_number: weekNumber })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-start the thought stream once the lesson content has loaded
+  useEffect(() => {
+    if (lesson && !streaming.isDone && !streaming.isThinking && !streaming.isStreaming) {
+      streaming.start()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson?.id])
 
   useEffect(() => {
     return () => {
@@ -361,6 +385,21 @@ export function LessonViewer({
           </div>
         </div>
 
+        {/* AI Thought Process Panel */}
+        <ThoughtProcess
+          thoughts={streaming.thoughts}
+          content={streaming.content}
+          isThinking={streaming.isThinking}
+          isStreaming={streaming.isStreaming}
+          isDone={streaming.isDone}
+          error={streaming.error}
+          onStart={streaming.start}
+          onAbort={streaming.abort}
+          showTrigger={!streaming.isThinking && !streaming.isStreaming && !streaming.isDone && !streaming.thoughts}
+          triggerLabel={`Show AI reasoning for "${topic}"`}
+          className="mb-6"
+        />
+
         {/* Learning Actions */}
         <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
           <Link href={quizHref}
@@ -397,6 +436,7 @@ export function LessonViewer({
             { mode: 'lesson' as PanelMode, icon: BookOpen,      label: 'Read'      },
             { mode: 'voice'  as PanelMode, icon: Mic,           label: 'Voice'     },
             { mode: 'doubt'  as PanelMode, icon: MessageCircle, label: 'Ask Doubt' },
+            { mode: 'focus'  as PanelMode, icon: Timer,         label: 'Focus'     },
           ].map(({ mode, icon: Icon, label }) => (
             <button key={mode} onClick={() => handlePanelChange(mode)}
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs transition-all"
@@ -630,6 +670,32 @@ export function LessonViewer({
             />
           </div>
         )}
+
+        {/* FOCUS PANEL — Pomodoro timer */}
+        {panel === 'focus' && (
+          <div className="max-w-sm mx-auto">
+            {/* Header */}
+            <div className="mb-4 text-center">
+              <p className="text-xs font-bold uppercase tracking-widest mb-1"
+                style={{ color: 'var(--color-app-primary)' }}>
+                Focus Mode
+              </p>
+              <h2 className="font-display font-black text-2xl" style={{ letterSpacing: '-0.5px' }}>
+                Pomodoro Timer
+              </h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-app-text-secondary)' }}>
+                Earn +50 XP per focus session · Long break every 4 sessions
+              </p>
+            </div>
+            <FocusTimer
+              onSessionComplete={(sessionNumber, xpEarned) => {
+                toast.success(`🎯 Session #${sessionNumber} complete! +${xpEarned} XP earned`)
+                track('focus_session_complete', { topic, skill, sessionNumber, xpEarned })
+              }}
+            />
+          </div>
+        )}
+
       </div>
     </div>
   )

@@ -17,11 +17,12 @@ from app.core.gemini import get_gemini_client
 
 # 1. Comprehensive Agent & Service Route Imports
 from app.api.routes import (
-    health, roadmap, books, lessons, 
+    health, roadmap, books, lessons,
     voice, quiz, playground, progress,
     daily,
     projects, career,
-    analytics, admin
+    analytics, admin,
+    stream,
 )
 
 # 2. Lifespan Management: Pre-warms AI resources
@@ -84,11 +85,12 @@ app.add_middleware(
 # 5. Route Registration
 # We use a centralized loop to register all agent routers with the /api prefix.
 agent_routers = [
-    health.router, roadmap.router, books.router, lessons.router, 
+    health.router, roadmap.router, books.router, lessons.router,
     voice.router, quiz.router, playground.router, progress.router,
     daily.router,
     projects.router, career.router,
-    analytics.router, admin.router
+    analytics.router, admin.router,
+    stream.router,
 ]
 
 for router in agent_routers:
