@@ -8,6 +8,7 @@ from google.genai import types
 from app.core.gemini import get_gemini_client  # Updated to use Client
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.cache import cache_manager
 from app.services.rag_service import retrieve_chunks, format_rag_context
 from app.models.schemas import GenerateLessonRequest, GeneratedLesson
 
@@ -90,25 +91,30 @@ async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
     client = get_gemini_client()
     prompt = _build_prompt(req, rag_context)
     
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.7,
-            response_mime_type='application/json' # Forces JSON output at the API level
+    async def _fetch_from_llm() -> dict:
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.7,
+                response_mime_type='application/json' # Forces JSON output at the API level
+            )
         )
-    )
-
-    # 3. Clean and Parse JSON
-    try:
-        # The SDK returns a structured object; we access the text attribute
         raw_text = response.text.strip()
         # Remove any markdown artifacts if present despite the config
         json_str = re.sub(r'```json|```', '', raw_text).strip()
         data = json.loads(json_str)
         if "sources_used" not in data:
             data["sources_used"] = []
+        return data
+
+    cache_key = f"lesson_{req.skill}_{req.topic}_{req.level}".lower().replace(" ", "_")
+
+    # 3. Clean and Parse JSON
+    try:
+        data = await cache_manager.get_or_set(cache_key, _fetch_from_llm, ttl=86400)
+
         
         # Pydantic validation for internal consistency
         lesson_obj = GeneratedLesson(**data)

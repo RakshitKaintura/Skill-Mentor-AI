@@ -11,15 +11,16 @@ class Settings(BaseSettings):
     allow_start_without_gemini: bool = False
     admin_api_key: str = "skillmentor-admin-secret"
     admin_allowed_emails: str = ""
+    redis_url: str = "redis://localhost:6379/0"
 
     # AI Model Configuration
     gemini_model: str = "gemini-3.1-flash-lite-preview"
     gemini_embed_model: str = "text-embedding-004"
 
     # RAG Settings
-    chunk_size_tokens: int = 512
+    chunk_size_tokens: int = 256
     chunk_overlap_tokens: int = 64
-    rag_top_k: int = 5
+    rag_top_k: int = 3
 
     # Pydantic V2 Config
     model_config = SettingsConfigDict(

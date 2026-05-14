@@ -6,6 +6,7 @@ import { BookOpen, CheckCircle, ArrowRight, Play } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
 import { buttonClassName } from '@/components/ui/Button'
+import { PageTransition } from '@/components/ui/PageTransition'
 
 export default async function LessonsListPage() {
   const supabase = await createClient()
@@ -34,6 +35,7 @@ export default async function LessonsListPage() {
       <DashboardNavbar userName={profile?.full_name ?? ''}
         streakDays={progress?.streak_days ?? 0} xpPoints={progress?.xp_points ?? 0} />
 
+      <PageTransition>
       <SectionContainer className="py-8 md:py-10">
 
         <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
@@ -130,6 +132,7 @@ export default async function LessonsListPage() {
           </div>
         )}
       </SectionContainer>
+      </PageTransition>
     </div>
   )
 }

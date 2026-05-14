@@ -3,7 +3,7 @@ import { redirect }     from 'next/navigation'
 import { DashboardNavbar }    from '@/components/layout/DashboardNavbar'
 import {
   BarChart2, Flame, BookOpen, Clock, Trophy,
-  Target, CheckCircle, TrendingUp, Activity,
+  CheckCircle, TrendingUp, Activity,
 } from 'lucide-react'
 import Card             from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'

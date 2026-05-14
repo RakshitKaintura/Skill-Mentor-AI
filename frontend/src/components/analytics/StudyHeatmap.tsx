@@ -76,7 +76,7 @@ export function StudyHeatmap({ activityByDate, className = '' }: Props) {
         <div className="inline-block min-w-full">
           {/* Month labels */}
           <div className="flex mb-1 ml-7 gap-1">
-            {columns.map((col, i) => {
+            {columns.map((_, i) => {
               const label = monthLabels.find(l => l.col === i)
               return (
                 <div key={i} className="flex-1" style={{ minWidth: 14 }}>

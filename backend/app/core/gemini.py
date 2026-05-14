@@ -28,7 +28,7 @@ def get_gemini_model(system_instruction: str):
     """Compatibility wrapper for older agent code expecting model.generate_content()."""
     settings = get_settings()
     client = get_ai_client()
-    config = get_mentor_model_config(system_instruction)
+    config = get_mentor_model_config(system_instruction, enable_thinking=False)
 
     class _GeminiCompatModel:
         def generate_content(self, prompt: str):
@@ -41,16 +41,18 @@ def get_gemini_model(system_instruction: str):
     return _GeminiCompatModel()
 
 
-def get_mentor_model_config(system_instruction: str):
+def get_mentor_model_config(system_instruction: str, enable_thinking: bool = False):
     """Returns a standard config for the Skill Mentor agent."""
-    return types.GenerateContentConfig(
-        system_instruction=system_instruction,
-        temperature=0.7,
-        top_p=0.95,
-        candidate_count=1,
-        max_output_tokens=8192,
-        thinking_config=types.ThinkingConfig(include_thoughts=True)
-    )
+    config_args = {
+        "system_instruction": system_instruction,
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "candidate_count": 1,
+        "max_output_tokens": 2048,
+    }
+    if enable_thinking:
+        config_args["thinking_config"] = types.ThinkingConfig(include_thoughts=True)
+    return types.GenerateContentConfig(**config_args)
 
 
 async def generate_mentor_response(prompt: str, role_description: str) -> str:
@@ -58,7 +60,7 @@ async def generate_mentor_response(prompt: str, role_description: str) -> str:
     settings = get_settings()
     model_name = settings.gemini_model
     client = get_ai_client()
-    config = get_mentor_model_config(role_description)
+    config = get_mentor_model_config(role_description, enable_thinking=False)
     response = await client.aio.models.generate_content(
         model=model_name,
         contents=prompt,
@@ -70,6 +72,7 @@ async def generate_mentor_response(prompt: str, role_description: str) -> str:
 async def stream_mentor_response(
     prompt: str,
     role_description: str,
+    enable_thinking: bool = False,
 ) -> AsyncGenerator[dict, None]:
     """
     Async generator that streams Gemini responses chunk-by-chunk.
@@ -86,7 +89,7 @@ async def stream_mentor_response(
     """
     settings = get_settings()
     client = get_ai_client()
-    config = get_mentor_model_config(role_description)
+    config = get_mentor_model_config(role_description, enable_thinking=enable_thinking)
 
     try:
         async for chunk in await client.aio.models.generate_content_stream(

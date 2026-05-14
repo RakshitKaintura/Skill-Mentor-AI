@@ -1,172 +1,105 @@
-# SkillMentor AI
+# 🚀 SkillMentor AI
 
-SkillMentor AI is a full-stack AI learning platform that turns a learner's goal into a guided study system. It combines personalized roadmaps, lesson generation, doubt solving, voice interaction, quizzes, project mentoring, career preparation, analytics, and admin reporting in one product.
+![SkillMentor AI Hero](./skill_mentor_ai_hero.png)
 
-## What This Project Does
+**SkillMentor AI** is a cutting-edge, full-stack AI learning platform that transforms a learner's raw goal into a highly personalized, interactive, and guided study system. It combines dynamic roadmaps, tailored lessons, intelligent doubt-solving, real-time voice interaction, Socratic code coaching, career preparation, and comprehensive analytics into a single, cohesive product.
 
-- Generates personalized skill roadmaps based on learner level, goal, and available study time
-- Creates structured lessons with explanations, analogies, code examples, and follow-up practice
-- Supports doubt solving during lessons with context-aware AI responses
-- Offers code playground coaching with challenge generation, hints, evaluation, and error explanation
-- Delivers quizzes, progress tracking, report cards, and spaced review flows
-- Includes daily challenges, notifications, and streak-style engagement loops
-- Supports project mentorship, resume review, interview practice, job readiness tracking, and certificate verification
-- Tracks user analytics and exposes admin dashboards for engagement insights
-- Uses uploaded study material for RAG-style book/document-grounded learning
+---
 
-## Core Features
+## ✨ Core Features & Learner Experience
 
-### Learner Experience
+- 🗺️ **Personalized Roadmaps**: AI-generated skill roadmaps dynamically planned based on learner level, ultimate goal, and available study time.
+- 📖 **Interactive Lessons**: Structured learning materials packed with explanations, relatable analogies, context-aware code examples, and active practice sessions.
+- 🤔 **Real-time Doubt Solving**: Context-aware AI agents available during lessons to answer questions and clarify concepts instantly.
+- 💻 **Socratic Code Coach**: A built-in code playground that generates specific challenges, provides intelligent hints, evaluates solutions, and explains errors without just giving away the answer.
+- 🎯 **Assessments & Review**: Adaptive quizzes, comprehensive progress tracking, detailed report cards, and a spaced repetition system for long-term retention.
+- 🔥 **Gamification & Engagement**: Daily challenges, notifications, leaderboards, and streak-style engagement loops to keep learners motivated.
+- 💼 **Career & Project Mentorship**: Resume review, mock interview practice, job readiness tracking, project mentoring, and verifiable certificates.
+- 🎙️ **Voice Learning**: Seamless voice interaction over WebSocket for hands-free tutoring and conversational learning.
+- 📚 **RAG-Powered Learning**: Upload your own study materials, books, or documents for grounded, contextual learning and querying.
+- 📊 **Admin & Analytics**: Deep user analytics and comprehensive admin dashboards for engagement insights.
 
-- AI-generated roadmap planning
-- Guided lesson viewer
-- Daily challenges
-- Progress dashboard and leaderboard
-- Review and report pages
-- Mock interview and career coaching
-- Resume review and certificate verification
-- Voice learning experience over WebSocket
+---
 
-### AI Agent Layer
+## 🏗️ Architecture & AI Agent Layer
 
-The backend is organized around specialized agents and services, including:
+The backend orchestration is powered by an advanced multi-agent architecture, moving beyond a single monolithic prompt handler. Each capability is powered by a specialized agent:
 
-- `roadmap_agent`
-- `lesson_agent`
-- `doubt_agent`
-- `quiz_agent`
-- `code_coach_agent`
-- `progress_agent`
-- `daily_challenge_agent`
-- `project_mentor_agent`
-- `career_prep_agent`
+- `Roadmap Architect` 🏗️
+- `Lesson Teacher` 🧑‍🏫
+- `Doubt Solver` 🕵️
+- `Quiz Examiner` 📝
+- `Code Coach` 👨‍💻
+- `Progress Tracker` 📈
+- `Daily Challenge Coach` 🏆
+- `Project Mentor` 🛠️
+- `Career Prep` 💼
 
-Supporting services handle:
+**Supporting services handle:** Document chunking & RAG processing, Text-to-Speech (TTS), secure notifications, user notes, dynamic certificate generation, and deep analytics.
 
-- RAG / document chunking
-- text-to-speech
-- notifications
-- notes
-- certificates
-- analytics
+---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-### Frontend
+### 🎨 Frontend
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+- **UI Library**: [React 19](https://react.dev/)
+- **Language**: TypeScript
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Auth & Data**: [Supabase](https://supabase.com/) SSR & Auth Helpers
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Supabase SSR/auth helpers
+### ⚙️ Backend
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) with Uvicorn
+- **AI Engine**: Google Gemini 3.1 Flash Lite Preview (`google-genai`)
+- **Orchestration**: [LangGraph](https://langchain-ai.github.io/langgraph/) & LangChain Core
+- **Data Validation**: Pydantic v2 & Pydantic-Settings
+- **Database**: Supabase Python Client
+- **Real-time**: WebSocket integration for voice and streaming sessions
 
-### Backend
+### ☁️ Infrastructure
+- **Auth & Database**: Supabase (PostgreSQL)
+- **Database Schema**: Fully versioned SQL schemas under `backend/scripts`
 
-- FastAPI
-- Uvicorn
-- Pydantic / pydantic-settings
-- Google Gemini via `google-genai`
-- LangGraph / LangChain Core
-- Supabase Python client
+---
 
-### Data / Infra
-
-- Supabase for auth + database
-- SQL schema files under `backend/scripts`
-- WebSocket support for voice interactions
-
-## Project Structure
+## 📂 Project Structure
 
 ```text
 Skill Mentor AI/
-|- backend/
-|  |- app/
-|  |  |- agents/
-|  |  |- api/routes/
-|  |  |- core/
-|  |  |- models/
-|  |  |- services/
-|  |- requirements.txt
-|  |- scripts/
-|- frontend/
-|  |- public/
-|  |- src/
-|  |  |- app/
-|  |  |- components/
-|  |  |- hooks/
-|  |  |- lib/
-|  |  |- types/
-|  |- package.json
-|- help.txt
+├── backend/
+│   ├── app/
+│   │   ├── agents/      # Core AI Agent Logic
+│   │   ├── api/routes/  # FastAPI Endpoints
+│   │   ├── core/        # Config, Logging, Middleware
+│   │   ├── models/      # Pydantic & DB Models
+│   │   └── services/    # RAG, TTS, Analytics
+│   ├── scripts/         # SQL schemas & DB migrations
+│   └── requirements.txt
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── app/         # Next.js App Router Pages
+│   │   ├── components/  # Reusable UI Components
+│   │   ├── hooks/       # Custom React Hooks
+│   │   ├── lib/         # Utils & API Clients
+│   │   └── types/       # TypeScript Definitions
+│   └── package.json
+└── skill_mentor_ai_hero.png
 ```
 
-## Main Frontend Pages
+---
 
-The app includes pages for:
+## 🚀 Getting Started (Local Development)
 
-- landing page
-- authentication and onboarding
-- dashboard
-- roadmap
-- lessons and lesson detail/current lesson
-- quiz
-- playground
-- daily challenge
-- progress and leaderboard
-- projects
-- interview and career hub
-- resume review
-- achievements
-- admin
-- settings
+### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd "Skill Mentor AI"
+```
 
-## Backend API Areas
+### 2. Environment Setup
 
-Most backend routes are mounted under `/api`, with health available at `/health`.
-
-- `/api/roadmap`
-- `/api/books`
-- `/api/lesson`
-- `/api/voice`
-- `/api/quiz`
-- `/api/playground`
-- `/api/progress`
-- `/api/daily`
-- `/api/projects`
-- `/api/career`
-- `/api/analytics`
-- `/api/admin`
-
-## Database Coverage
-
-The SQL schema files show support for the following major entities:
-
-- profiles
-- roadmaps
-- lessons
-- quizzes
-- user books and book chunks
-- user progress
-- voice sessions
-- doubts
-- code challenges
-- spaced repetition
-- report cards
-- projects
-- interview sessions
-- resumes
-- certificates
-- analytics events
-- daily challenges
-- study buddy sessions
-- notifications
-
-## Environment Variables
-
-### Backend `.env`
-
-Create `backend/.env` with values like:
-
+**Backend (`backend/.env`)**
 ```env
 gemini_api_key=your_gemini_api_key
 supabase_url=your_supabase_url
@@ -183,10 +116,7 @@ chunk_overlap_tokens=64
 rag_top_k=5
 ```
 
-### Frontend `.env.local`
-
-Create `frontend/.env.local` with:
-
+**Frontend (`frontend/.env.local`)**
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -197,84 +127,45 @@ ADMIN_API_KEY=your_admin_api_key
 ADMIN_ALLOWED_EMAILS=admin@example.com
 ```
 
-## Local Development
-
-### 1. Clone and enter the repo
-
-```bash
-git clone <your-repo-url>
-cd "Skill Mentor AI"
-```
-
-### 2. Start the backend
-
-Create and activate a virtual environment, then install dependencies:
-
+### 3. Start the Backend API
+Create and activate a virtual environment, then install the dependencies.
 ```bash
 cd backend
 python -m venv .venv
+# Windows:
 .venv\Scripts\activate
+# macOS/Linux:
+# source .venv/bin/activate
+
 pip install -r requirements.txt
-```
-
-Run the API:
-
-```bash
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+> The API will be available at `http://localhost:8000`. You can check health at `http://localhost:8000/health`.
 
-### 3. Start the frontend
-
-In a new terminal:
-
+### 4. Start the Frontend App
+Open a new terminal session.
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+> The frontend application will be running at `http://localhost:3000`.
 
-Frontend runs at `http://localhost:3000` by default.
+---
 
-## Useful Commands
+## 🧪 Useful Commands
 
-### Backend
+**Backend:**
+- Run Server: `python -m uvicorn app.main:app --reload`
+- Run Tests: `pytest`
 
-```bash
-cd backend
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-pytest
-```
+**Frontend:**
+- Start Dev Server: `npm run dev`
+- Build for Production: `npm run build`
+- Run Linter: `npm run lint`
 
-### Frontend
+---
 
-```bash
-cd frontend
-npm run dev
-npm run build
-npm run lint
-```
+## 📜 License
 
-## How It Works
-
-1. A learner signs up and completes onboarding.
-2. The platform generates a roadmap tailored to skill, level, goal, and study time.
-3. Lessons, quizzes, and practice content are generated from that roadmap.
-4. Progress data is stored in Supabase and surfaced in dashboards and review flows.
-5. Voice, RAG, analytics, career prep, and admin features extend the core learning loop.
-
-## Repository Highlights
-
-- Clean separation between frontend UI and backend AI orchestration
-- Multi-agent backend design instead of one monolithic prompt handler
-- Supabase-backed persistence for product features and analytics
-- Career-prep features beyond standard tutorial apps
-- Voice and document-grounded learning support
-
-## Status
-
-This repository appears to be an actively developed full-stack learning platform with both product features and internal admin tooling already scaffolded across multiple modules.
-
-## License
-
-Add your preferred license here, for example `MIT`.
-
+[MIT License](LICENSE)

@@ -111,7 +111,7 @@ export function usePomodoro(
 
   // ── Tick ─────────────────────────────────────────────────
 
-  const startTick = useCallback((initialSeconds: number, initialSessions: number) => {
+  const startTick = useCallback(function startTickFn(initialSeconds: number, initialSessions: number) {
     clearTick()
     let secs     = initialSeconds
     let sessions = initialSessions
@@ -125,7 +125,6 @@ export function usePomodoro(
         sessions = advancePhase(phaseRef.current, sessions) as number
         // Auto-start next phase
         const cfg     = configRef.current
-        const nextPhase = phaseRef.current  // already updated by advancePhase via setState
         // Delay a tick so state settles
         setTimeout(() => {
           const nextSecs = phaseRef.current === 'focus'
@@ -133,7 +132,7 @@ export function usePomodoro(
             : phaseRef.current === 'short_break'
             ? cfg.shortBreakMins * 60
             : cfg.longBreakMins * 60
-          startTick(nextSecs, sessions)
+          startTickFn(nextSecs, sessions)
         }, 500)
       }
     }, 1000)

@@ -2,7 +2,7 @@
 
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine, Dot,
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 
 // ── Types ────────────────────────────────────────────────────

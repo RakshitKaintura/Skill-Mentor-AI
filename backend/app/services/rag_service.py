@@ -132,7 +132,7 @@ def _search_book_chunks_rpc(
             "match_count": top_k,
         }).execute()
 
-async def retrieve_context(query: str, user_id: str, skill: str, top_k: int = 5) -> str:
+async def retrieve_context(query: str, user_id: str, skill: str, top_k: int = 3) -> str:
     """
     Semantic retrieval using pgvector.
     """
@@ -164,7 +164,7 @@ async def retrieve_chunks(
     query: str,
     user_id: str,
     skill_tag: str,
-    top_k: int = 5,
+    top_k: int = 3,
     include_curated: bool = True,
 ) -> List[Dict[str, Any]]:
     """Compatibility helper that returns retrieved chunks in the legacy shape."""

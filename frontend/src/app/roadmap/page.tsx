@@ -8,6 +8,7 @@ import { ShareButton } from '@/components/roadmap/ShareButton'
 import { cn } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
+import { PageTransition } from '@/components/ui/PageTransition'
 
 export default async function RoadmapPage() {
   const supabase = await createClient()
@@ -39,8 +40,9 @@ export default async function RoadmapPage() {
     <div className="min-h-screen page-tone-cool text-[var(--color-app-text-primary)]">
       <DashboardNavbar userName={profile?.full_name ?? ''} streakDays={progress?.streak_days ?? 0} xpPoints={progress?.xp_points ?? 0} />
 
-      <SectionContainer className="py-8">
-        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <PageTransition>
+        <SectionContainer className="py-8">
+          <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--color-app-primary)] mb-1">
               <Map size={16} />
@@ -168,6 +170,7 @@ export default async function RoadmapPage() {
           </Card>
         )}
       </SectionContainer>
+      </PageTransition>
     </div>
   )
 }

@@ -14,10 +14,11 @@ interface VerifiedCertificate {
   verify_code: string
 }
 
-export default async function VerifyCertPage({ params }: { params: { code: string } }) {
+export default async function VerifyCertPage({ params }: { params: Promise<{ code: string }> }) {
+  const resolvedParams = await params
   let cert: VerifiedCertificate | null = null
   try {
-    const res  = await fetch(`${API}/api/career/certificate/verify/${params.code}`, { cache: 'no-store' })
+    const res  = await fetch(`${API}/api/career/certificate/verify/${resolvedParams.code}`, { cache: 'no-store' })
     const data = await res.json() as { valid?: boolean; certificate?: VerifiedCertificate }
     if (data.valid && data.certificate) cert = data.certificate
   } catch { /* not found */ }

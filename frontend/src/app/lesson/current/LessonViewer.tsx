@@ -316,6 +316,7 @@ export function LessonViewer({
   }
 
   return (
+    <>
     <div className="min-h-screen page-tone-mint">
       <DashboardNavbar userName={userName} />
 
@@ -690,7 +691,7 @@ export function LessonViewer({
             <FocusTimer
               onSessionComplete={(sessionNumber, xpEarned) => {
                 toast.success(`🎯 Session #${sessionNumber} complete! +${xpEarned} XP earned`)
-                track('focus_session_complete', { topic, skill, sessionNumber, xpEarned })
+                track('focus_session_complete', { event_data: { topic, skill, sessionNumber, xpEarned } })
               }}
             />
           </div>
@@ -698,6 +699,7 @@ export function LessonViewer({
 
       </div>
     </div>
+    </>
   )
 }
 

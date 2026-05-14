@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
 from enum import Enum
+from datetime import datetime, timezone
+
 
 
 # ── Enums ──────────────────────────────────────────────────
@@ -145,8 +147,17 @@ class DoubtResponse(BaseModel):
 
 # ── Health ─────────────────────────────────────────────────
 class HealthResponse(BaseModel):
-    status:             str
-    gemini_connected:   bool
-    supabase_connected: bool
-    version:            str = "1.0.0"
-    environment:        str = "development"
+    # Core status
+    status:             str        # "operational" | "degraded" | "down"
+    version:            str        = "4.0.0"
+    environment:        str        = "development"
+    timestamp:          datetime   = Field(default_factory=lambda: datetime.now(timezone.utc))
+    uptime_seconds:     float      = 0.0   # seconds since process start
+    checks_ms:          int        = 0     # how long health checks took
+
+    # Dependency checks
+    gemini_connected:   bool       = False
+    supabase_connected: bool       = False
+    storage_connected:  bool       = False  # Supabase Storage bucket accessible
+    rag_ready:          bool       = False  # RAG documents table has data
+    notes_ready:        bool       = False  # user_notes migration has run

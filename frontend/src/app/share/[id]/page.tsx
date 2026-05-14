@@ -10,9 +10,9 @@ import { buttonClassName } from '@/components/ui/Button'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 
 interface Props {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function PublicRoadmapPage({ params }: Props) {

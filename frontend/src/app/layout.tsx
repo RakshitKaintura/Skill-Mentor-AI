@@ -4,6 +4,7 @@ import { Manrope, Sora } from 'next/font/google'
 import { Toaster } from 'sonner'
 import AnalyticsTracker from '@/components/AnalyticsTracker'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider'
 import './globals.css'
 
 const manrope = Manrope({
@@ -58,7 +59,9 @@ export default function RootLayout({
           </Suspense>
 
           <main className="relative z-10 min-h-screen">
-            {children}
+            <RealtimeProvider>
+              {children}
+            </RealtimeProvider>
           </main>
 
           <Toaster

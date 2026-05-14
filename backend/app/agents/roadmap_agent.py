@@ -2,8 +2,11 @@ import json
 from datetime import date
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.gemini import generate_mentor_response
+from google.genai import types
+from app.core.gemini import get_gemini_client
+from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.cache import cache_manager
 from app.models.schemas import (
     GenerateRoadmapRequest,
     GeneratedRoadmap,
@@ -14,7 +17,8 @@ from app.models.schemas import (
 SYSTEM_PROMPT = """You are the Roadmap Architect Agent for SkillMentor AI.
 Your goal is to design a structured, 4-phase technical learning curriculum.
 Focus on buildable milestones and specific, modern technical topics.
-Ensure the roadmap is realistic for the student's daily hour commitment."""
+Ensure the roadmap is realistic for the student's daily hour commitment.
+CRITICAL: Be highly concise. Use short descriptions. Return ONLY valid JSON."""
 
 # Fixed: Accessing Enum members correctly based on your schema definitions
 # Using .get() with the Enum member directly or the value string
@@ -127,19 +131,38 @@ async def generate_roadmap(req: GenerateRoadmapRequest) -> dict:
     prompt = (
         f"Create a {req.skill} roadmap for a {req.level.value} level student aiming for a {goal_context}. "
         f"The student can commit {req.hours_per_day} hours per day. "
-        "Return exactly one JSON object (no markdown, no explanation) with fields: "
+        "Return exactly one JSON object with fields: "
         "skill, total_weeks, phases, daily_schedule, final_project, job_readiness_checklist. "
-        "Each phase must include: phase (int), name (str), weeks (list[int]), topics (list[str]), project (str), description (str)."
+        "Each phase must include: phase (int), name (str), weeks (list[int]), topics (list[str] max 4 concise topics), project (str), description (short string)."
     )
 
-    response_text = await generate_mentor_response(prompt, SYSTEM_PROMPT)
+    client = get_gemini_client()
+    settings = get_settings()
+
+    async def _fetch_from_llm() -> dict:
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.7,
+                response_mime_type='application/json'
+            )
+        )
+        response_text = response.text or "{}"
+        return _extract_json_payload(response_text)
+
+    # Cache key based on input parameters to avoid re-generating the same roadmap
+    cache_key = f"roadmap_{req.skill}_{req.level.value}_{req.goal.value}".lower().replace(" ", "_")
 
     try:
-        roadmap_json = _extract_json_payload(response_text)
+        # Cache roadmaps for 7 days (604800 seconds) since they rarely change
+        roadmap_json = await cache_manager.get_or_set(cache_key, _fetch_from_llm, ttl=604800)
+
         normalized = _normalize_roadmap_payload(roadmap_json)
         roadmap = GeneratedRoadmap.model_validate(normalized)
     except Exception as e:
-        raise ValueError(f"Gemini roadmap JSON parsing failed: {str(e)} | raw: {response_text}")
+        raise ValueError(f"Gemini roadmap JSON parsing failed: {str(e)}")
 
     if not roadmap.phases:
         raise ValueError("AI failed to generate roadmap phases.")

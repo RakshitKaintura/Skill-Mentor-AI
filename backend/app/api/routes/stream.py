@@ -68,6 +68,7 @@ async def stream_ai_thinking(
     level:       str           = Query("beginner"),
     user_id:     Optional[str] = Query(None),
     roadmap_id:  Optional[str] = Query(None),
+    enable_thinking: bool      = Query(False, description="Whether to include AI thought process"),
 ):
     """
     SSE endpoint — streams Gemini thought + answer chunks.
@@ -113,7 +114,7 @@ async def stream_ai_thinking(
     )
 
     async def event_generator():
-        async for chunk in stream_mentor_response(full_prompt, system_prompt):
+        async for chunk in stream_mentor_response(full_prompt, system_prompt, enable_thinking=enable_thinking):
             yield _sse_event(chunk)
             # `done` and `error` are terminal; stop iteration
             if chunk["type"] in ("done", "error"):

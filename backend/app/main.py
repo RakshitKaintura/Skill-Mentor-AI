@@ -14,6 +14,8 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 from app.core.config import get_settings
 from app.core.gemini import get_gemini_client
+from app.core.logging_config import setup_logging
+from app.core.middleware import CorrelationIDMiddleware, GlobalExceptionHandler
 
 # 1. Comprehensive Agent & Service Route Imports
 from app.api.routes import (
@@ -22,7 +24,7 @@ from app.api.routes import (
     daily,
     projects, career,
     analytics, admin,
-    stream,
+    stream, notes,
 )
 
 # 2. Lifespan Management: Pre-warms AI resources
@@ -50,6 +52,9 @@ async def lifespan(app: FastAPI):
 
 settings = get_settings()
 
+# ── Logging must be configured before any logger calls ───────
+setup_logging(settings.app_env)
+
 # 3. App Initialization
 app = FastAPI(
     title="SkillMentor AI",
@@ -65,6 +70,12 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# 3.6 Observability Middleware
+# Order: CorrelationIDMiddleware runs first (injects trace ID into ContextVar);
+# GlobalExceptionHandler wraps everything and can access the trace ID.
+app.add_middleware(GlobalExceptionHandler)
+app.add_middleware(CorrelationIDMiddleware)
 
 # 4. CORS Configuration: Sanitizing origins
 # Professional practice: Strip trailing slashes to prevent browser CORS blocks
@@ -90,7 +101,7 @@ agent_routers = [
     daily.router,
     projects.router, career.router,
     analytics.router, admin.router,
-    stream.router,
+    stream.router, notes.router,
 ]
 
 for router in agent_routers:

@@ -17,3 +17,5 @@ pytest-asyncio
 reportlab
 docling
 slowapi
+redis
+pytest-mock
