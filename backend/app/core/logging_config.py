@@ -14,7 +14,10 @@ import logging
 import sys
 import time
 from datetime import datetime, timezone
-from typing import override
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 # ── JSON formatter ────────────────────────────────────────────
 

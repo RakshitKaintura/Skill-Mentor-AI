@@ -74,7 +74,6 @@ export default async function CurrentLessonPage({ searchParams }: CurrentLessonP
     .eq('user_id', user.id)
     .eq('roadmap_id', roadmap.id)
     .eq('topic', roadmap.current_topic)
-    .eq('completed', false)
     .order('created_at', { ascending: false })
     .limit(1)
     .single()

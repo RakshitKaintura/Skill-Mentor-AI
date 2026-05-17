@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Link from 'next/link'
-import { ArrowRight, BookOpen, Mic, Flame, Star, Map, Clock, Target, Layers } from 'lucide-react'
+import { ArrowRight, BookOpen, Mic, Flame, Star, Map, Clock, Target, Layers, ChevronRight } from 'lucide-react'
 import type { Roadmap, UserProgress } from '@/types'
 import { cn } from '@/lib/utils'
 import Card from '@/components/ui/Card'
@@ -18,15 +18,15 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single()
 
-  // User may have an auth session but no profile row (e.g., manual deletes in Supabase).
   if (!profile) redirect('/auth/login')
-
   if (!profile?.onboarding_completed) redirect('/onboarding')
 
-  // Explicitly casting the data to match your local types
-  const { data: roadmap } = await supabase
+  // All roadmaps (for skill-wise breakdown)
+  const { data: allRoadmaps } = await supabase
     .from('roadmaps').select('*').eq('user_id', user.id)
-    .order('created_at', { ascending: false }).limit(1).single() as unknown as { data: Roadmap | null }
+    .order('created_at', { ascending: false }) as unknown as { data: Roadmap[] | null }
+
+  const roadmap = allRoadmaps?.[0] ?? null
 
   const { data: progress } = await supabase
     .from('user_progress').select('*').eq('user_id', user.id).single() as unknown as { data: UserProgress | null }
@@ -35,18 +35,55 @@ export default async function DashboardPage() {
     .from('lessons').select('id, topic, completed, created_at')
     .eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
 
+  // Per-skill lesson counts — only select columns that exist on lessons table
+  const { data: allLessons } = await supabase
+    .from('lessons')
+    .select('roadmap_id, completed')
+    .eq('user_id', user.id)
+
+  // Per-skill quiz XP (quizzes table stores xp_awarded per quiz)
+  const { data: allQuizzes } = await supabase
+    .from('quizzes')
+    .select('roadmap_id, xp_awarded')
+    .eq('user_id', user.id)
+
+  const lessonsByRoadmap: Record<string, { completed: number; total: number }> = {}
+  for (const l of allLessons ?? []) {
+    if (!lessonsByRoadmap[l.roadmap_id]) {
+      lessonsByRoadmap[l.roadmap_id] = { completed: 0, total: 0 }
+    }
+    lessonsByRoadmap[l.roadmap_id].total++
+    if (l.completed) lessonsByRoadmap[l.roadmap_id].completed++
+  }
+
+  // XP per roadmap: 100 per completed lesson + quiz XP awarded
+  const xpByRoadmap: Record<string, number> = {}
+  for (const l of allLessons ?? []) {
+    if (l.completed) xpByRoadmap[l.roadmap_id] = (xpByRoadmap[l.roadmap_id] ?? 0) + 100
+  }
+  for (const q of allQuizzes ?? []) {
+    if (q.roadmap_id && q.xp_awarded) {
+      xpByRoadmap[q.roadmap_id] = (xpByRoadmap[q.roadmap_id] ?? 0) + (q.xp_awarded ?? 0)
+    }
+  }
+
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Learner'
   const streakDays = progress?.streak_days ?? 0
-  const xpPoints = progress?.xp_points ?? 0
-  const lessonsCompleted = progress?.lessons_completed ?? 0
+
+  // Stats scoped to active roadmap only
+  const activeStats = roadmap ? (lessonsByRoadmap[roadmap.id] ?? { completed: 0, total: 0 }) : { completed: 0, total: 0 }
+  const lessonsCompleted = activeStats.completed
+  // XP scoped to active roadmap (lessons + quizzes for this skill)
+  const xpPoints = roadmap ? (xpByRoadmap[roadmap.id] ?? 0) : (progress?.xp_points ?? 0)
+  // Study hours from global user_progress (lessons table doesn't store per-lesson time)
   const studyMinutes = progress?.total_study_minutes ?? 0
+
   const phases = (roadmap?.phases as Roadmap['phases']) ?? []
   const currentWeek = roadmap?.current_week ?? 1
   const week4Query = roadmap
     ? `?skill=${encodeURIComponent(roadmap.skill)}&level=${encodeURIComponent(roadmap.level)}&roadmap_id=${encodeURIComponent(roadmap.id)}`
     : ''
 
-  // Logic Fix: Handle the 'total_weeks' or 'total_duration' aliasing
   const totalWeeks = Math.max(1, roadmap?.total_duration ?? roadmap?.total_weeks ?? 12)
   const completedWeeks = Math.max(0, currentWeek - 1)
   const weekProgress = Math.round((completedWeeks / totalWeeks) * 100)
@@ -58,13 +95,15 @@ export default async function DashboardPage() {
     return 'Good evening'
   }
 
+  const SKILL_COLORS = ['#1a73e8', '#188038', '#f9ab00', '#7e57c2', '#e53935', '#00897b']
+
   return (
     <div className="min-h-screen page-tone-warm">
       <DashboardNavbar userName={profile?.full_name ?? ''} streakDays={streakDays} xpPoints={xpPoints} />
 
       <SectionContainer className="py-8 md:py-10">
 
-        {/* Greeting Section */}
+        {/* Greeting */}
         <div className="mb-8">
           <p className="mb-2 text-sm text-[var(--color-app-text-secondary)]">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -80,7 +119,18 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — scoped to active roadmap */}
+        <div className="mb-2 flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-app-text-secondary)]">
+            {roadmap ? roadmap.skill : 'Your Stats'}
+          </p>
+          {roadmap && (
+            <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--color-app-primary)]"
+              style={{ background: 'color-mix(in oklab, var(--color-app-primary) 12%, var(--color-app-surface))' }}>
+              Active
+            </span>
+          )}
+        </div>
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
             { label: 'Lessons Done', value: lessonsCompleted, Icon: BookOpen, tone: 'bg-[var(--color-app-surface-cool)]', icon: 'text-[#1a73e8]' },
@@ -96,7 +146,61 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* Continue Today Hero Card */}
+        {/* Per-Skill Breakdown (only if user has multiple skills) */}
+        {(allRoadmaps?.length ?? 0) > 1 && (
+          <Card className="mb-8 bg-[var(--color-app-surface)]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Layers size={15} className="text-[var(--color-app-primary)]" />
+                <h3 className="text-sm font-semibold text-[var(--color-app-text-primary)]">All Skills Progress</h3>
+              </div>
+              <Link href="/skills" className="text-xs text-[var(--color-app-primary)] hover:underline flex items-center gap-1">
+                Manage Skills <ChevronRight size={11} />
+              </Link>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(allRoadmaps ?? []).map((rm, i) => {
+                const stats = lessonsByRoadmap[rm.id] ?? { completed: 0, total: 0, studyMins: 0 }
+                const color = SKILL_COLORS[i % SKILL_COLORS.length]
+                const pct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+                const isActive = rm.id === roadmap?.id
+                return (
+                  <Link
+                    key={rm.id}
+                    href={`/lesson/current?roadmap_id=${rm.id}`}
+                    className="flex items-center gap-3 rounded-lg p-3 transition-all hover:bg-[var(--color-app-bg)]"
+                    style={{
+                      border: `1px solid ${isActive ? color + '44' : 'var(--color-app-border)'}`,
+                      background: isActive ? color + '0a' : undefined,
+                    }}
+                  >
+                    <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-sm font-semibold text-[var(--color-app-text-primary)] truncate">{rm.skill}</span>
+                        {isActive && (
+                          <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase flex-shrink-0"
+                            style={{ background: color + '18', color }}>Active</span>
+                        )}
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[var(--color-app-bg)]">
+                        <div className="h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, background: color }} />
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 min-w-[60px]">
+                      <div className="text-sm font-bold" style={{ color }}>{stats.completed}<span className="text-[var(--color-app-text-secondary)] font-normal">/{stats.total}</span></div>
+                      <div className="text-[10px] text-[var(--color-app-text-secondary)]">{pct}% done</div>
+                    </div>
+                    <ChevronRight size={13} className="text-[var(--color-app-text-secondary)] flex-shrink-0" />
+                  </Link>
+                )
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Continue Today */}
         {roadmap && (
           <Card className="mb-6 bg-[var(--color-app-surface-cool)]">
             <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -110,13 +214,11 @@ export default async function DashboardPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Link href="/lesson/current"
-                  className={buttonClassName()}>
+                <Link href="/lesson/current" className={buttonClassName()}>
                   <BookOpen size={14} /> Start Lesson
                 </Link>
               </div>
             </div>
-
             <div className="mt-6">
               <div className="mb-2 flex justify-between text-sm text-[var(--color-app-text-secondary)]">
                 <span>Overall progress</span>
@@ -132,16 +234,14 @@ export default async function DashboardPage() {
 
         <div className="grid md:grid-cols-2 gap-6">
 
-          {/* Roadmap Phases Card */}
+          {/* Roadmap Phases */}
           <Card className="bg-[var(--color-app-surface-warm)]">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2 text-[var(--color-app-text-primary)]">
                 <Map size={16} className="text-[var(--color-app-primary)]" />
                 <h3 className="text-lg font-semibold">Your Roadmap</h3>
               </div>
-              <Link href="/roadmap" className="text-sm text-[var(--color-app-primary)] hover:underline">
-                Full View →
-              </Link>
+              <Link href="/roadmap" className="text-sm text-[var(--color-app-primary)] hover:underline">Full View →</Link>
             </div>
             <div className="flex flex-col gap-3">
               {phases.map((phase, i) => {
@@ -149,65 +249,58 @@ export default async function DashboardPage() {
                 const activeWeeks = phase.duration_weeks ?? phase.weeks ?? [0]
                 const startWk = activeWeeks[0]
                 const endWk = activeWeeks[activeWeeks.length - 1]
-
                 return (
                   <div key={i} className="flex items-center gap-3">
                     <div className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
-                      phase.completed 
-                          ? "border-[var(--color-app-primary)] bg-[var(--color-app-primary)] text-white" 
-                        : isCurrent 
-                            ? "border-[var(--color-app-primary)] bg-[#e8f0fe] text-[var(--color-app-primary)]" 
-                            : "border-[var(--color-app-border)] bg-[var(--color-app-bg)] text-[var(--color-app-text-secondary)]"
+                      "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
+                      phase.completed
+                        ? "border-[var(--color-app-primary)] bg-[var(--color-app-primary)] text-white"
+                        : isCurrent
+                        ? "border-[var(--color-app-primary)] bg-[#e8f0fe] text-[var(--color-app-primary)]"
+                        : "border-[var(--color-app-border)] bg-[var(--color-app-bg)] text-[var(--color-app-text-secondary)]"
                     )}>
                       {phase.completed ? '✓' : i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{phase.name}</p>
+                        <p className="truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{phase.name}</p>
                         {isCurrent && (
-                            <span className="rounded bg-[#e8f0fe] px-2 py-0.5 text-xs font-semibold uppercase text-[var(--color-app-primary)]">
-                            NOW
-                          </span>
+                          <span className="rounded bg-[#e8f0fe] px-2 py-0.5 text-xs font-semibold uppercase text-[var(--color-app-primary)]">NOW</span>
                         )}
                       </div>
-                        <p className="text-xs text-[var(--color-app-text-secondary)]">
-                        Wk {startWk}–{endWk} · {phase.topics.length} topics
-                      </p>
+                      <p className="text-xs text-[var(--color-app-text-secondary)]">Wk {startWk}–{endWk} · {phase.topics.length} topics</p>
                     </div>
                   </div>
                 )
               })}
             </div>
-            </Card>
+          </Card>
 
-          {/* Recent Lessons Card */}
-            <Card className="bg-[var(--color-app-surface-lavender)]">
+          {/* Recent Lessons */}
+          <Card className="bg-[var(--color-app-surface-lavender)]">
             <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2 text-[var(--color-app-text-primary)]">
-                  <BookOpen size={16} className="text-[var(--color-app-primary)]" />
-                  <h3 className="text-lg font-semibold">Recent Lessons</h3>
+              <div className="flex items-center gap-2 text-[var(--color-app-text-primary)]">
+                <BookOpen size={16} className="text-[var(--color-app-primary)]" />
+                <h3 className="text-lg font-semibold">Recent Lessons</h3>
               </div>
-                <Link href="/lesson" className="text-sm text-[var(--color-app-primary)] hover:underline">
-                All Lessons →
-              </Link>
+              <Link href="/lesson" className="text-sm text-[var(--color-app-primary)] hover:underline">All Lessons →</Link>
             </div>
             {recentLessons && recentLessons.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {recentLessons.map((lesson: { id: string; topic: string; completed: boolean; created_at: string }) => (
-                  <Link 
-                    key={lesson.id} 
+                  <Link
+                    key={lesson.id}
                     href={`/lesson/${lesson.id}`}
-                      className="-mx-2 flex items-center gap-3 rounded-lg border-b border-[var(--color-app-border)] px-2 py-3 last:border-0 transition-colors hover:bg-[var(--color-app-bg)]"
+                    className="-mx-2 flex items-center gap-3 rounded-lg border-b border-[var(--color-app-border)] px-2 py-3 last:border-0 transition-colors hover:bg-[var(--color-app-bg)]"
                   >
                     <div className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-full text-xs",
-                        lesson.completed ? "bg-[#e6f4ea] text-[#188038]" : "bg-[#e8f0fe] text-[var(--color-app-primary)]"
+                      "flex h-7 w-7 items-center justify-center rounded-full text-xs",
+                      lesson.completed ? "bg-[#e6f4ea] text-[#188038]" : "bg-[#e8f0fe] text-[var(--color-app-primary)]"
                     )}>
                       {lesson.completed ? '✓' : '▶'}
                     </div>
-                      <p className="flex-1 truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{lesson.topic}</p>
-                      <p className="text-xs text-[var(--color-app-text-secondary)]">
+                    <p className="flex-1 truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{lesson.topic}</p>
+                    <p className="text-xs text-[var(--color-app-text-secondary)]">
                       {new Date(lesson.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </Link>
@@ -215,38 +308,37 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                  <BookOpen size={28} className="mx-auto mb-3 text-[var(--color-app-text-secondary)]" />
-                  <p className="mb-4 text-sm text-[var(--color-app-text-secondary)]">No lessons yet</p>
-                <Link href="/lesson/current"
-                    className={buttonClassName()}>
+                <BookOpen size={28} className="mx-auto mb-3 text-[var(--color-app-text-secondary)]" />
+                <p className="mb-4 text-sm text-[var(--color-app-text-secondary)]">No lessons yet</p>
+                <Link href="/lesson/current" className={buttonClassName()}>
                   Start First Lesson <ArrowRight size={11} />
                 </Link>
               </div>
             )}
-            </Card>
+          </Card>
         </div>
 
-        {/* Quick Actions Footer */}
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+        {/* Quick Actions */}
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { href: '/skills', Icon: Layers, label: 'My Skills', tone: 'bg-[var(--color-app-surface-cool)]', border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
-              { href: `/project${week4Query}`, Icon: Target, label: 'Project Mentor', tone: 'bg-[var(--color-app-surface-mint)]', border: 'border-[#b7e1c3]', icon: 'text-[#188038]', hover: 'group-hover:text-[#188038]' },
-              { href: `/interview${week4Query}`, Icon: Mic, label: 'Mock Interview', tone: 'bg-[var(--color-app-surface-cool)]', border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
-              { href: `/career${week4Query}`, Icon: Star, label: 'Career Hub', tone: 'bg-[var(--color-app-surface-warm)]', border: 'border-[#f5d59a]', icon: 'text-[#f9ab00]', hover: 'group-hover:text-[#b06000]' },
-              { href: `/resume${week4Query}`, Icon: BookOpen, label: 'Resume ATS Score', tone: 'bg-[var(--color-app-surface-lavender)]', border: 'border-[#d4c7ff]', icon: 'text-[#7e57c2]', hover: 'group-hover:text-[#7e57c2]' },
+            { href: '/skills',                Icon: Layers,   label: 'My Skills',         tone: 'bg-[var(--color-app-surface-cool)]',     border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
+            { href: `/project${week4Query}`,  Icon: Target,   label: 'Project Mentor',    tone: 'bg-[var(--color-app-surface-mint)]',     border: 'border-[#b7e1c3]', icon: 'text-[#188038]', hover: 'group-hover:text-[#188038]' },
+            { href: `/interview${week4Query}`,Icon: Mic,      label: 'Mock Interview',    tone: 'bg-[var(--color-app-surface-cool)]',     border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
+            { href: `/career${week4Query}`,   Icon: Star,     label: 'Career Hub',        tone: 'bg-[var(--color-app-surface-warm)]',     border: 'border-[#f5d59a]', icon: 'text-[#f9ab00]', hover: 'group-hover:text-[#b06000]' },
+            { href: `/resume${week4Query}`,   Icon: BookOpen, label: 'Resume ATS Score',  tone: 'bg-[var(--color-app-surface-lavender)]', border: 'border-[#d4c7ff]', icon: 'text-[#7e57c2]', hover: 'group-hover:text-[#7e57c2]' },
           ].map((action) => (
-            <Link 
-              key={action.href} 
+            <Link
+              key={action.href}
               href={action.href}
-                className={cn('group flex items-center gap-3 rounded-xl border p-4 shadow-sm transition-all hover:translate-y-[-1px]', action.tone, action.border)}
+              className={cn('group flex items-center gap-3 rounded-xl border p-4 shadow-sm transition-all hover:translate-y-[-1px]', action.tone, action.border)}
             >
-                <action.Icon size={15} className={action.icon} />
-                <span className={cn('text-sm font-semibold text-[var(--color-app-text-primary)] transition-colors', action.hover)}>{action.label}</span>
+              <action.Icon size={15} className={action.icon} />
+              <span className={cn('text-sm font-semibold text-[var(--color-app-text-primary)] transition-colors', action.hover)}>{action.label}</span>
             </Link>
           ))}
         </div>
 
-        </SectionContainer>
+      </SectionContainer>
     </div>
   )
 }

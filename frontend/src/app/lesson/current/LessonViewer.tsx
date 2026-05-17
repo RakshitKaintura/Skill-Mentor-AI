@@ -401,54 +401,59 @@ export function LessonViewer({
           className="mb-6"
         />
 
-        {/* Learning Actions */}
-        <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
-          <Link href={quizHref}
-            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
-            Start Quiz
-          </Link>
-          <Link href={playgroundHref}
-            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
-            Start Challenge
-          </Link>
-          <Link href={reportHref}
-            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
-            Weekly Report
-          </Link>
-          <Link href={reviewHref}
-            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
-            Review Queue
-          </Link>
-          <Link href={leaderboardHref}
-            className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
-            style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
-            Leaderboard
-          </Link>
-        </div>
+        {/* Learning Actions + Tab Switcher — side by side */}
+        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
 
-        {/* Tab Switcher */}
-        <div className="flex gap-0 mb-6 border rounded-sm overflow-hidden"
-          style={{ borderColor: 'var(--color-app-border)', width: 'fit-content' }}>
-          {[
-            { mode: 'lesson' as PanelMode, icon: BookOpen,      label: 'Read'      },
-            { mode: 'voice'  as PanelMode, icon: Mic,           label: 'Voice'     },
-            { mode: 'doubt'  as PanelMode, icon: MessageCircle, label: 'Ask Doubt' },
-            { mode: 'focus'  as PanelMode, icon: Timer,         label: 'Focus'     },
-          ].map(({ mode, icon: Icon, label }) => (
-            <button key={mode} onClick={() => handlePanelChange(mode)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs transition-all"
-              style={{
-                background: panel === mode ? 'color-mix(in oklab, var(--color-app-primary) 10%, var(--color-app-surface))' : 'var(--color-app-surface)',
-                color:      panel === mode ? 'var(--color-app-primary)' : 'var(--color-app-text-secondary)',
-                borderRight: '1px solid var(--color-app-border)',
-              }}>
-              <Icon size={12} />{label}
-            </button>
-          ))}
+          {/* Action links */}
+          <div className="flex flex-wrap gap-2">
+            <Link href={quizHref}
+              className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+              style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
+              Start Quiz
+            </Link>
+            <Link href={playgroundHref}
+              className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+              style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
+              Start Challenge
+            </Link>
+            <Link href={reportHref}
+              className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+              style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
+              Weekly Report
+            </Link>
+            <Link href={reviewHref}
+              className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+              style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
+              Review Queue
+            </Link>
+            <Link href={leaderboardHref}
+              className="text-center px-3 py-2 rounded-sm text-xs border transition-all"
+              style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-secondary)' }}>
+              Leaderboard
+            </Link>
+          </div>
+
+          {/* Tab Switcher */}
+          <div className="flex gap-0 border rounded-sm overflow-hidden flex-shrink-0"
+            style={{ borderColor: 'var(--color-app-border)' }}>
+            {[
+              { mode: 'lesson' as PanelMode, icon: BookOpen,      label: 'Read'      },
+              { mode: 'voice'  as PanelMode, icon: Mic,           label: 'Voice'     },
+              { mode: 'doubt'  as PanelMode, icon: MessageCircle, label: 'Ask Doubt' },
+              { mode: 'focus'  as PanelMode, icon: Timer,         label: 'Focus'     },
+            ].map(({ mode, icon: Icon, label }) => (
+              <button key={mode} onClick={() => handlePanelChange(mode)}
+                className="flex items-center gap-1.5 px-4 py-2.5 text-xs transition-all"
+                style={{
+                  background: panel === mode ? 'color-mix(in oklab, var(--color-app-primary) 10%, var(--color-app-surface))' : 'var(--color-app-surface)',
+                  color:      panel === mode ? 'var(--color-app-primary)' : 'var(--color-app-text-secondary)',
+                  borderRight: '1px solid var(--color-app-border)',
+                }}>
+                <Icon size={12} />{label}
+              </button>
+            ))}
+          </div>
+
         </div>
 
         {/* LESSON PANEL */}

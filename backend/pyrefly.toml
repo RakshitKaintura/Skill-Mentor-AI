@@ -1,0 +1,19 @@
+# pyrefly.toml — Static type-checker configuration for SkillMentor AI backend
+# Tells pyrefly to use the project's virtual environment instead of the
+# system Python 3.14, which resolves all "Cannot find module" false positives.
+
+[pyrefly]
+python_interpreter = "venv/Scripts/python.exe"
+
+# Treat the backend/ directory as the project root so that
+# `app.*` imports resolve correctly without needing `sys.path` hacks.
+project_root = "."
+
+# Exclude generated caches and non-source directories from analysis
+exclude = [
+    "**/__pycache__/**",
+    "**/.mypy_cache/**",
+    "**/.pytest_cache/**",
+    "**/venv/**",
+    "**/node_modules/**",
+]

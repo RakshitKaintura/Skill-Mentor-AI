@@ -3,26 +3,23 @@ import re
 from typing import Dict, Any, List
 
 from tenacity import retry, stop_after_attempt, wait_exponential
-from google.genai import types
 
-from app.core.gemini import get_gemini_client  # Updated to use Client
 from app.core.config import get_settings
 from app.core.database import get_supabase
 from app.core.cache import cache_manager
+from app.core.llm_router import llm_router
 from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.services.memory_service import get_user_memory, append_memory, summarize_session
 from app.models.schemas import GenerateLessonRequest, GeneratedLesson
 
-# System instructions optimized for March 2026 LLM reasoning
-SYSTEM_PROMPT = """You are the Lead Pedagogical Agent for SkillMentor AI. 
-Your goal is to transform technical documentation into an engaging, high-retention learning experience.
-
-CRITICAL INSTRUCTIONS:
-1. RESPONSE FORMAT: Return ONLY a raw JSON object. Do not include markdown blocks (```json) or explanations.
-2. SCHEMA ADHERENCE: You must follow the provided JSON structure exactly.
-3. PEDAGOGY: Use the 'Feynman Technique'—explain complex topics as if to a peer using simple analogies.
-4. CODE QUALITY: Snippets must be modern, production-grade, and follow PEP8/StandardJS.
-5. INTERACTIVITY: The 'try_it' section must be a specific, hands-on task with clear TODOs.
-6. ERROR PREVENTION: The 'mistakes' section must provide high-contrast comparisons between anti-patterns and best practices."""
+SYSTEM_PROMPT = """You are the Lead Pedagogical Agent for SkillMentor AI.
+Transform technical topics into concise, high-retention lessons using the Feynman Technique.
+CRITICAL:
+- Return ONLY a raw JSON object. No markdown, no explanations.
+- Follow the schema exactly.
+- Code snippets must be minimal, modern, and PEP8/StandardJS compliant.
+- keep 'try_it' task specific with clear TODOs.
+- 'mistakes' must contrast anti-pattern vs correct pattern briefly."""
 
 settings = get_settings()
 
@@ -37,32 +34,14 @@ def _build_prompt(req: GenerateLessonRequest, rag_context: str) -> str:
     lang_key = req.skill.lower().replace(" ", "")
 
     return f"""
-Generate a comprehensive, interactive lesson based on the following context:
-- SKILL: {req.skill}
-- TOPIC: {req.topic}
-- TARGET AUDIENCE: {level_desc}
-- CURRICULUM POSITION: Phase {req.phase_name}, Week {req.week_number}
+Generate a lesson on the topic below. Be concise; avoid padding.
+SKILL: {req.skill} | TOPIC: {req.topic} | AUDIENCE: {level_desc} | PHASE: {req.phase_name}, Week {req.week_number}
 
 [DOCUMENTATION CONTEXT]
-{rag_context if rag_context else "No specific documentation provided. Use your internal knowledge base."}
+{rag_context if rag_context else "Use internal knowledge base."}
 
-[REQUIRED JSON STRUCTURE]
-{{
-  "topic": "{req.topic}",
-  "skill": "{req.skill}",
-  "week_number": {req.week_number},
-  "phase_name": "{req.phase_name}",
-  "key_takeaway": "Direct benefit of this lesson",
-  "next_topic": "Logical next step",
-  "steps": [
-    {{ "type": "intro", "title": "The Big Picture", "content": "Context and purpose" }},
-    {{ "type": "analogy", "title": "Real-world Concept", "content": "Non-technical analogy" }},
-    {{ "type": "code_demo", "title": "Live Implementation", "content": "Step-by-step breakdown", "code_snippet": "Runnable code", "language": "{lang_key}" }},
-    {{ "type": "try_it", "title": "Practical Challenge", "content": "The task", "code_snippet": "Starter code", "language": "{lang_key}" }},
-    {{ "type": "mistakes", "title": "Pro Tips & Pitfalls", "content": "Common errors", "code_snippet": "// WRONG vs // CORRECT", "language": "{lang_key}" }},
-    {{ "type": "summary", "title": "Wrap Up", "content": "Key points" }}
-  ]
-}}
+[REQUIRED JSON SCHEMA]
+{{"topic":"{req.topic}","skill":"{req.skill}","week_number":{req.week_number},"phase_name":"{req.phase_name}","key_takeaway":"<str>","next_topic":"<str>","steps":[{{"type":"intro","title":"<str>","content":"<str>"}},{{"type":"analogy","title":"<str>","content":"<str>"}},{{"type":"code_demo","title":"<str>","content":"<str>","code_snippet":"<str>","language":"{lang_key}"}},{{"type":"try_it","title":"<str>","content":"<str>","code_snippet":"<str>","language":"{lang_key}"}},{{"type":"mistakes","title":"<str>","content":"<str>","code_snippet":"<str>","language":"{lang_key}"}},{{"type":"summary","title":"<str>","content":"<str>"}}]}}
 """
 
 @retry(
@@ -73,37 +52,64 @@ Generate a comprehensive, interactive lesson based on the following context:
 async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
     """
     Orchestrates the RAG pipeline and lesson generation.
+    0. Check DB for existing lesson → return immediately if found (no LLM call).
     1. Retrieves context -> 2. Generates Content -> 3. Validates Schema -> 4. Persists Data.
     """
     supabase = get_supabase()
+
+    # 0. Return existing lesson from DB if already generated for this topic
+    existing = supabase.table("lessons").select("*") \
+        .eq("user_id", req.user_id) \
+        .eq("roadmap_id", req.roadmap_id) \
+        .eq("topic", req.topic) \
+        .order("created_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    if existing.data:
+        row = existing.data[0]
+        return {
+            "lesson_id": row["id"],
+            "topic": row["topic"],
+            "skill": req.skill,
+            "week_number": row.get("week_number", req.week_number),
+            "phase_name": req.phase_name,
+            "key_takeaway": row.get("key_takeaway", ""),
+            "next_topic": row.get("next_topic", ""),
+            "steps": row.get("steps", []),
+            "sources_used": row.get("sources_used", []),
+            "completed": row.get("completed", False),
+            "pdf_notes_url": row.get("pdf_notes_url"),
+        }
+
+    # 1. Fetch User Memory for personalization
+    user_memory = await get_user_memory(req.user_id)
+    
+    # Build system prompt with memory context
+    system_prompt_with_memory = SYSTEM_PROMPT
+    if user_memory:
+        system_prompt_with_memory = f"{SYSTEM_PROMPT}\n\n{user_memory}"
     
     # 1. Context Retrieval (RAG)
     rag_chunks = await retrieve_chunks(
         query=f"{req.topic} {req.skill}",
         user_id=req.user_id,
         skill_tag=req.skill.lower(),
-        top_k=5,
+        top_k=3,
         include_curated=True
     )
     rag_context = format_rag_context(rag_chunks)
 
-    # 2. LLM Generation using Google GenAI SDK v1.0+
-    client = get_gemini_client()
+    # 2. LLM Generation using the multi-key router
     prompt = _build_prompt(req, rag_context)
     
     async def _fetch_from_llm() -> dict:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.7,
-                response_mime_type='application/json' # Forces JSON output at the API level
-            )
+        raw_text = await llm_router.generate_json(
+            prompt=prompt,
+            system_instruction=system_prompt_with_memory,
+            max_output_tokens=8192,
         )
-        raw_text = response.text.strip()
-        # Remove any markdown artifacts if present despite the config
-        json_str = re.sub(r'```json|```', '', raw_text).strip()
+        json_str = re.sub(r'```json|```', '', raw_text.strip()).strip()
         data = json.loads(json_str)
         if "sources_used" not in data:
             data["sources_used"] = []
@@ -148,7 +154,7 @@ async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
         if not result.data:
             raise RuntimeError("Database insertion failed.")
             
-        lesson_id = result.data[0]["id"]
+        lesson_id = result.data[0]["id"]  # type: ignore[index]
 
         # Update current progress in the roadmap
         supabase.table("roadmaps").update(
@@ -164,6 +170,17 @@ async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
     except Exception as e:
         # Log error here in production
         raise RuntimeError(f"Storage Error: {str(e)}")
+    finally:
+        # Save session to rolling memory buffer (fire-and-forget, non-blocking)
+        try:
+            summary = await summarize_session(
+                topic=req.topic,
+                skill=req.skill,
+                key_takeaway=data.get("key_takeaway") if isinstance(data, dict) else None,
+            )
+            await append_memory(req.user_id, summary, topics=[req.topic])
+        except Exception:
+            pass  # Never block lesson delivery due to memory write failure
 
 async def complete_lesson(user_id: str, lesson_id: str, time_spent: int = 0) -> Dict[str, str]:
     """Updates user statistics and awards XP upon lesson completion."""
@@ -179,9 +196,11 @@ async def complete_lesson(user_id: str, lesson_id: str, time_spent: int = 0) -> 
     prog_result = supabase.table("user_progress").select("*").eq("user_id", user_id).single().execute()
     
     if prog_result.data:
+        prog_data = prog_result.data
+        assert isinstance(prog_data, dict), "Expected dict from single() query"
         supabase.table("user_progress").update({
-            "lessons_completed": prog_result.data["lessons_completed"] + 1,
-            "total_study_minutes": prog_result.data["total_study_minutes"] + max(time_spent, 0)
+            "lessons_completed": prog_data["lessons_completed"] + 1,  # type: ignore[operator]
+            "total_study_minutes": prog_data["total_study_minutes"] + max(time_spent, 0)  # type: ignore[operator]
         }).eq("user_id", user_id).execute()
     
     # Trigger database functions for gamification

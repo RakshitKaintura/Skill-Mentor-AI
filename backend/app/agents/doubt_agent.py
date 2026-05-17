@@ -1,20 +1,37 @@
+"""
+Doubt Solver Agent — with Rolling Context Window Memory
+
+Pipeline per request:
+  1. Fetch long-term user memory (cross-session personalization).
+  2. Build a token-counted, compressed context window for this session.
+  3. Fetch RAG chunks for grounding.
+  4. Generate a guided Socratic response via the LLM router.
+  5. Persist the new turn (user + assistant) to conversation history.
+  6. Update long-term memory asynchronously (fire-and-forget).
+"""
 import json
 import re
 import logging
+import uuid
 from typing import Dict, Any, Optional
 
-from google.genai import types
-from app.core.gemini import get_gemini_client  # Updated to Client pattern
-from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.llm_router import llm_router
 from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.services.memory_service import (
+    get_user_memory,
+    build_context_window,
+    append_turn,
+    append_memory,
+    summarize_session,
+)
 from app.models.schemas import DoubtRequest, DoubtResponse
 
-settings = get_settings()
 logger = logging.getLogger(__name__)
 
-# Refined System Prompt for a "Resume-Quality" Educational Agent
-SYSTEM_PROMPT = """You are the Senior Doubt Solver for SkillMentor AI. 
+# ── System prompt ──────────────────────────────────────────────────────────────
+
+SYSTEM_PROMPT = """You are the Senior Doubt Solver for SkillMentor AI.
 Your primary directive is the Socratic Method: lead students to the answer through hints, analogies, and conceptual clarity.
 Provide short, targeted answers. Avoid long preambles.
 
@@ -22,31 +39,32 @@ CORE OPERATING PROCEDURES:
 1. GUIDANCE OVER ANSWERS: Do not solve homework or provide direct copy-paste solutions. Provide the "why" and a "how-to-approach" guide.
 2. THE ANALOGY BRIDGE: Every analogy must start with a non-technical scenario (e.g., a library, a kitchen, a post office) and explicitly transition back to the technical concept.
 3. ADAPTIVE TONE: Be encouraging, patient, and use "we" to foster a collaborative learning environment.
-4. CODE STANDARDS: Code examples must be minimal, PEP8/ESLint compliant, and focus solely on the student's point of confusion."""
+4. CONTINUITY: If conversation history is provided, reference the student's past questions and build on what was already explained — do not repeat yourself.
+5. CODE STANDARDS: Code examples must be minimal, PEP8/ESLint compliant, and focus solely on the student's point of confusion.
 
+Always respond with a valid JSON object containing:
+- "answer": string — the pedagogical explanation
+- "analogy": string — a relatable non-technical analogy
+- "code_example": string or null — a focused code snippet if applicable"""
+
+
+# ── JSON parsing helpers ───────────────────────────────────────────────────────
 
 def _extract_json_payload(raw_text: str) -> Dict[str, Any]:
-    """Parse response text as JSON, with a resilient fallback for wrapped payloads."""
     text = (raw_text or "").strip()
     if not text:
         raise ValueError("Empty model response")
-
-    # First try strict parsing.
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-
-    # Fallback: extract the first JSON object from mixed text.
     match = re.search(r"\{[\s\S]*\}", text)
     if not match:
         raise ValueError("No JSON object found in model response")
-
     return json.loads(match.group(0))
 
 
 def _normalize_doubt_payload(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize different model JSON shapes to DoubtResponse schema."""
     answer = (
         data.get("answer")
         or data.get("pedagogical_explanation")
@@ -62,29 +80,27 @@ def _normalize_doubt_payload(data: Dict[str, Any]) -> Dict[str, Any]:
             raw_analogy.get("parallel_approach"),
             raw_analogy.get("technical_transition"),
         ]
-        analogy = " ".join(part.strip() for part in analogy_parts if isinstance(part, str) and part.strip())
+        analogy = " ".join(
+            p.strip() for p in analogy_parts if isinstance(p, str) and p.strip()
+        )
         if not analogy:
-            analogy = " ".join(str(value).strip() for value in raw_analogy.values() if isinstance(value, str) and value.strip())
+            analogy = " ".join(
+                v.strip() for v in raw_analogy.values() if isinstance(v, str) and v.strip()
+            )
     else:
         analogy = raw_analogy
 
     code_example = (
-        data.get("code_example")
-        or data.get("code")
-        or data.get("example_code")
+        data.get("code_example") or data.get("code") or data.get("example_code")
     )
-
-    # Some model outputs provide a structured code comparison block.
     code_comparison = data.get("code_comparison")
     if not code_example and isinstance(code_comparison, dict):
-        sequential = code_comparison.get("sequential")
-        parallel = code_comparison.get("parallel")
-        if sequential or parallel:
-            parts = []
-            if sequential:
-                parts.append(f"// Sequential\n{sequential}")
-            if parallel:
-                parts.append(f"// Parallel\n{parallel}")
+        parts = []
+        if code_comparison.get("sequential"):
+            parts.append(f"// Sequential\n{code_comparison['sequential']}")
+        if code_comparison.get("parallel"):
+            parts.append(f"// Parallel\n{code_comparison['parallel']}")
+        if parts:
             code_example = "\n\n".join(parts)
 
     return {
@@ -93,77 +109,105 @@ def _normalize_doubt_payload(data: Dict[str, Any]) -> Dict[str, Any]:
         "code_example": str(code_example).strip() if code_example else None,
     }
 
+
+# ── Agent ──────────────────────────────────────────────────────────────────────
+
 async def solve_doubt(req: DoubtRequest) -> DoubtResponse:
     """
-    Analyzes student queries using RAG context and generates a guided resolution.
-    Utilizes Gemini 3.1 Flash Lite Preview with forced JSON schema for 100% parsing reliability.
+    Analyzes a student question with full context windowing and RAG grounding.
     """
     supabase = get_supabase()
-    client = get_gemini_client()
 
-    # 1. Retrieval Augmented Generation (RAG)
-    # Searches uploaded materials and curated books for relevant context
+    # Ensure every request has a session_id (creates a new session if caller omits it)
+    session_id = req.session_id or str(uuid.uuid4())
+
+    # ── 1. Long-term memory (cross-day personalization) ────────────────────────
+    user_memory = await get_user_memory(req.user_id)
+
+    # ── 2. Session context window (rolling summary within this session) ────────
+    context_window = await build_context_window(
+        user_id=req.user_id,
+        session_id=session_id,
+        current_question=req.question,
+    )
+
+    # ── 3. Build system prompt with memory injected ────────────────────────────
+    effective_system_prompt = SYSTEM_PROMPT
+    if user_memory:
+        effective_system_prompt += f"\n\n{user_memory}"
+
+    # ── 4. RAG — retrieve relevant grounding context ───────────────────────────
     rag_chunks = await retrieve_chunks(
         query=f"{req.question} {req.topic}",
         user_id=req.user_id,
         skill_tag=req.skill.lower(),
         top_k=3,
-        include_curated=True
+        include_curated=True,
     )
     rag_context = format_rag_context(rag_chunks) if rag_chunks else "No specific context available."
 
-    # 2. Modern Prompt Construction
-    user_prompt = f"""
-    STUDENT CONTEXT:
-    - Learning: {req.skill}
-    - Current Topic: {req.topic}
-    - Question: {req.question}
+    # ── 5. Construct user prompt (with conversation history inline) ────────────
+    history_block = f"\n\n{context_window}" if context_window else ""
+    user_prompt = f"""{history_block}
 
-    [RELEVANT DOCUMENTATION]
-    {rag_context}
+STUDENT CONTEXT:
+- Learning: {req.skill}
+- Current Topic: {req.topic}
+- Question: {req.question}
 
-    Please provide a structured response including a clear pedagogical explanation, 
-    a relatable analogy, and a focused code snippet if applicable.
-    """
+[RELEVANT DOCUMENTATION]
+{rag_context}
 
-    # 3. LLM Generation with Native JSON Mode
-    # Using the March 2026 SDK standard to eliminate Regex parsing
+Please provide a structured JSON response with:
+- "answer": pedagogical explanation using the Socratic method
+- "analogy": a relatable non-technical analogy that bridges to the concept
+- "code_example": a focused minimal code snippet, or null if not applicable
+"""
+
+    # ── 6. LLM generation via multi-key router with JSON mode ─────────────────
     try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=user_prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.6,
-                response_mime_type='application/json'
-            )
+        raw_text = await llm_router.generate_json(
+            prompt=user_prompt,
+            system_instruction=effective_system_prompt,
+            temperature=0.6,
+            max_output_tokens=8192,
         )
-
-        data = _extract_json_payload(response.text or "")
+        data = _extract_json_payload(raw_text)
         normalized = _normalize_doubt_payload(data)
         result = DoubtResponse(**normalized)
 
-        # Ensure required fields are meaningful even when provider omits one.
         if not result.answer:
             raise ValueError("Model response missing answer field")
         if not result.analogy:
             result = DoubtResponse(
                 answer=result.answer,
-                analogy=f"Think of {req.topic} like practicing a skill in steps: first understand the intent, then apply it in a small example.",
+                analogy=(
+                    f"Think of {req.topic} like practicing a skill in steps: "
+                    "first understand the intent, then apply it in a small example."
+                ),
                 code_example=result.code_example,
             )
-        
+
     except Exception as e:
         logger.exception("Doubt generation failed for topic '%s': %s", req.topic, e)
-        # Fallback mechanism for unexpected LLM behavior
         result = DoubtResponse(
-            answer="I encountered a slight hiccup while processing that. Let's look at the core concept again: " + req.topic,
+            answer=(
+                "I encountered a slight hiccup while processing that. "
+                "Let's look at the core concept again: " + req.topic
+            ),
             analogy="Think of learning like debugging code—sometimes we just need to refresh the state and try again.",
-            code_example=None
+            code_example=None,
         )
 
-    # 4. Persistence for Learning Analytics
-    # Saves to 'doubts' table to track common student friction points
+    # ── 7. Persist new conversation turns ─────────────────────────────────────
+    # Save user question + assistant answer to the rolling window (fire-and-forget)
+    try:
+        await append_turn(req.user_id, session_id, "user", req.question)
+        await append_turn(req.user_id, session_id, "assistant", result.answer)
+    except Exception:
+        pass  # Never block the student response
+
+    # ── 8. Persist to doubts table for analytics ───────────────────────────────
     try:
         profile_row = (
             supabase.table("profiles")
@@ -172,27 +216,30 @@ async def solve_doubt(req: DoubtRequest) -> DoubtResponse:
             .limit(1)
             .execute()
         )
-
-        if not getattr(profile_row, "data", None):
-            logger.info(
-                "Skipping doubts logging because profile does not exist for user_id=%s",
-                req.user_id,
-            )
-            return result
-
-        supabase.table("doubts").insert({
-            "user_id": req.user_id,
-            "lesson_id": req.lesson_id,
-            "topic": req.topic,
-            "skill": req.skill,
-            "question": req.question,
-            "answer": result.answer,
-            "analogy": result.analogy,
-            "code_example": result.code_example,
-            "created_at": "now()"
-        }).execute()
+        if getattr(profile_row, "data", None):
+            supabase.table("doubts").insert({
+                "user_id": req.user_id,
+                "lesson_id": req.lesson_id,
+                "topic": req.topic,
+                "skill": req.skill,
+                "question": req.question,
+                "answer": result.answer,
+                "analogy": result.analogy,
+                "code_example": result.code_example,
+                "created_at": "now()",
+            }).execute()
     except Exception as db_err:
-        # Log error but don't block the student's answer
         logger.warning("Database logging error in solve_doubt: %s", db_err)
+
+    # ── 9. Update long-term memory (fire-and-forget) ───────────────────────────
+    try:
+        summary = await summarize_session(
+            topic=req.topic,
+            skill=req.skill,
+            struggle_description=req.question[:150],
+        )
+        await append_memory(req.user_id, summary, topics=[req.topic])
+    except Exception:
+        pass
 
     return result

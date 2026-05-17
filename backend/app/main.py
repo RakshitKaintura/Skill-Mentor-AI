@@ -24,7 +24,7 @@ from app.api.routes import (
     daily,
     projects, career,
     analytics, admin,
-    stream, notes,
+    stream, notes, sandbox,
 )
 
 # 2. Lifespan Management: Pre-warms AI resources
@@ -101,13 +101,17 @@ agent_routers = [
     daily.router,
     projects.router, career.router,
     analytics.router, admin.router,
-    stream.router, notes.router,
+    stream.router, notes.router, sandbox.router,
 ]
 
 for router in agent_routers:
-    # Health checks stay at root; agents are versioned under /api
-    prefix = "/api" if router != health.router else ""
-    app.include_router(router, prefix=prefix)
+    # Health checks stay at root; agents are versioned under /api/v1
+    if router == health.router:
+        app.include_router(router)
+    elif router == sandbox.router:
+        app.include_router(router, prefix="/api/v1/sandbox", tags=["Sandbox"])
+    else:
+        app.include_router(router, prefix="/api")
 
 @app.get("/", tags=["System"])
 async def root():

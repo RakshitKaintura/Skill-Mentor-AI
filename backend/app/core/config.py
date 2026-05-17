@@ -1,9 +1,13 @@
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 class Settings(BaseSettings):
     # API Keys & URLs
     gemini_api_key: str
+    # Optional: comma-separated list of extra Gemini keys for rotation
+    # e.g. GEMINI_API_KEYS="key1,key2,key3" in .env
+    gemini_api_keys: str = ""
     supabase_url: str
     supabase_service_key: str
     frontend_url: str = "http://localhost:3000"
@@ -13,8 +17,12 @@ class Settings(BaseSettings):
     admin_allowed_emails: str = ""
     redis_url: str = "redis://localhost:6379/0"
 
+    # Judge0 Code Execution (free CE public instance)
+    judge0_api_url: str = "https://ce.judge0.com"
+    judge0_api_key: str = ""  # Not required for the free CE instance
+
     # AI Model Configuration
-    gemini_model: str = "gemini-3.1-flash-lite-preview"
+    gemini_model: str = "gemini-3-flash-preview"
     gemini_embed_model: str = "text-embedding-004"
 
     # RAG Settings

@@ -13,6 +13,7 @@ from app.agents.code_coach_agent import (
     evaluate_submission, 
     explain_error
 )
+from app.services.judge0_service import execute_code, get_language_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/playground", tags=["Playground"])
@@ -46,6 +47,12 @@ class ErrorExplainRequest(BaseModel):
     code: str
     language: str = "javascript"
     topic: str
+
+class ExecuteRequest(BaseModel):
+    """Direct code execution request — runs code in Judge0 sandbox and returns real output."""
+    source_code: str
+    language: str = "javascript"
+    stdin: str = ""
 
 # --- API Endpoints ---
 
@@ -122,6 +129,33 @@ async def explain_error_endpoint(req: ErrorExplainRequest):
     except Exception as e:
         logger.error(f"Error explanation failure: {e}")
         raise HTTPException(status_code=500, detail="Explanation service error.")
+
+@router.post("/execute")
+async def execute_code_endpoint(req: ExecuteRequest):
+    """
+    Runs code in the Judge0 CE sandbox and returns real stdout/stderr.
+    This powers the "Run" button in the Playground before a formal submission.
+    """
+    try:
+        result = await execute_code(
+            source_code=req.source_code,
+            language=req.language,
+            stdin=req.stdin,
+        )
+        return {
+            "success": True,
+            "accepted": result.accepted,
+            "stdout": result.stdout,
+            "stderr": result.error_output,
+            "status": result.status_desc,
+            "time": result.time,
+            "memory": result.memory,
+        }
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Code execution error: {e}")
+        raise HTTPException(status_code=500, detail="Code execution service error.")
 
 @router.get("/challenge/user/{user_id}")
 async def get_user_challenges(user_id: str, roadmap_id: Optional[str] = None):

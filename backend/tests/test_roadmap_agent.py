@@ -1,19 +1,17 @@
 import pytest
+from unittest.mock import patch
 from app.agents.roadmap_agent import generate_roadmap
 from app.models.schemas import GenerateRoadmapRequest, LearnerGoal, SkillLevel
 
 @pytest.mark.anyio
-async def test_generate_roadmap_success(mock_gemini, mock_supabase):
+@patch("app.agents.roadmap_agent.llm_router.generate_json")
+async def test_generate_roadmap_success(mock_llm_generate, mock_gemini, mock_supabase):
     """
     Test that the generate_roadmap agent properly calls the LLM, 
     parses the JSON response, saves to Supabase, and returns the correct payload.
     """
     
-    # Mock cache hit/miss behavior if needed (assuming cache is disabled or bypassed in test env, 
-    # but we can just mock the get_or_set if it causes issues. For now, let's let the code run 
-    # since we mocked get_gemini_client inside the real agent via conftest).
-    # Wait, the cache manager uses real Redis by default if REDIS_URL is set.
-    # We should probably mock cache_manager.get_or_set in the test.
+    mock_llm_generate.return_value = '{"skill": "Python", "total_weeks": 4, "phases": [{"phase": 1, "name": "Basics", "weeks": [1], "topics": ["Variables"], "project": "Calc", "description": "Start"}], "daily_schedule": "Study 1 hr", "final_project": "Web App", "job_readiness_checklist": ["Build API"]}'
     
     req = GenerateRoadmapRequest(
         user_id="test-user-123",

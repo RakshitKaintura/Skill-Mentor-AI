@@ -2,8 +2,10 @@ import os
 import sys
 from unittest.mock import AsyncMock, MagicMock
 
-# Mock supabase module before any app imports happen
+# Mock modules before any app imports happen
 sys.modules["supabase"] = MagicMock()
+sys.modules["docling"] = MagicMock()
+sys.modules["docling.document_converter"] = MagicMock()
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock

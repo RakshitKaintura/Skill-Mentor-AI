@@ -132,11 +132,12 @@ class LessonCompleteRequest(BaseModel):
 
 # ── Doubt models ───────────────────────────────────────────
 class DoubtRequest(BaseModel):
-    user_id:   str
-    lesson_id: Optional[str] = None
-    topic:     str
-    skill:     str
-    question:  str
+    user_id:    str
+    lesson_id:  Optional[str] = None
+    session_id: Optional[str] = None   # Groups multiple turns into one conversation
+    topic:      str
+    skill:      str
+    question:   str
 
 
 class DoubtResponse(BaseModel):

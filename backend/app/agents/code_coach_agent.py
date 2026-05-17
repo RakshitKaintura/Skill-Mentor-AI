@@ -14,6 +14,7 @@ from app.core.gemini import get_gemini_client # Standardized Client pattern
 from app.core.config import get_settings
 from app.core.database import get_supabase
 from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.services.judge0_service import run_test_cases
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -184,50 +185,94 @@ async def evaluate_submission(
     user_code: str,
     hints_used: int
 ) -> Dict[str, Any]:
-    """Simulates execution and provides an AI review of the submitted code."""
+    """Executes code against test cases via Judge0, then gets AI pedagogical feedback."""
     supabase = get_supabase()
     client = get_gemini_client()
 
     ch_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).single().execute()
     ch = ch_record.data
 
+    # ── Step 1: Real code execution via Judge0 ──────────────────────────────
+    test_cases = ch.get("test_cases", [])
+    language = ch.get("language", "javascript")
+    
+    real_results = await run_test_cases(user_code, language, test_cases)
+    
+    tests_passed = sum(1 for r in real_results if r["passed"])
+    all_passed = tests_passed == len(real_results)
+
+    # ── Step 2: AI pedagogical feedback based on REAL output ───────────────
+    # Summarize actual execution results for the AI to analyze
+    real_output_summary = json.dumps(real_results, indent=2)[:2000]  # Truncate for token safety
+
     prompt = f"""
-    EVALUATE SUBMISSION:
-    Language: {ch['language']}
-    Test Cases: {json.dumps(ch['test_cases'])}
+    REVIEW CODE SUBMISSION:
+    Language: {language}
+    Test Cases Run: {len(real_results)} | Passed: {tests_passed}
     
     Student Code:
     {user_code}
     
-    Reference Solution:
-    {ch['solution_code']}
+    Real Execution Results (from sandbox):
+    {real_output_summary}
     
-    INSTRUCTION: Mentally run the code against test cases. 
-    Evaluate code quality (dry-ness, naming, efficiency).
-    Return JSON with 'passed' (bool), 'test_results' (list), and 'pedagogical_feedback' (string).
+    Reference Solution:
+    {ch.get('solution_code', 'Not available')}
+    
+    INSTRUCTION: Based on the REAL execution output above:
+    1. Evaluate code quality (readability, efficiency, naming).
+    2. Provide specific pedagogical feedback mentioning the actual failing test cases.
+    3. Do NOT re-simulate or guess — use the real results provided.
+    
+    Return JSON: {{"overall_feedback": "...", "code_quality": {{"score": 0-100, "comments": []}}, "feedback": {{"what_to_improve": "..."}}}}
     """
 
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type='application/json'
+    result: Dict[str, Any] = {
+        "passed": all_passed,
+        "tests_passed": tests_passed,
+        "tests_total": len(real_results),
+        "test_results": real_results,
+        "overall_feedback": "",
+        "code_quality": {"score": 70, "comments": []},
+        "feedback": {"what_to_improve": ""},
+        "xp_awarded": 0,
+    }
+
+    try:
+        ai_response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                response_mime_type='application/json'
+            )
         )
-    )
+        ai_data = json.loads(ai_response.text)
+        result["overall_feedback"] = ai_data.get("overall_feedback", "")
+        result["code_quality"] = ai_data.get("code_quality", {"score": 70, "comments": []})
+        result["feedback"] = ai_data.get("feedback", {})
+    except Exception as e:
+        logger.warning(f"AI feedback generation failed, returning raw test results: {e}")
+        result["overall_feedback"] = (
+            f"Your code passed {tests_passed}/{len(real_results)} test cases."
+        )
 
-    result = json.loads(response.text)
-
-    # If passed, trigger gamification logic
-    if result.get("passed"):
-        # Uses a PostgreSQL function to handle XP and badge logic atomically
-        completion_data = supabase.rpc("complete_challenge", {
-            "p_challenge_id": challenge_id,
-            "p_user_id": user_id,
-            "p_hints_used": hints_used,
-            "p_quality_score": result.get("quality_score", 80)
-        }).execute()
-        result["xp_awarded"] = completion_data.data.get("xp_earned", 50) if completion_data.data else 50
+    # ── Step 3: Gamification ────────────────────────────────────────────────
+    if all_passed:
+        try:
+            completion_data = supabase.rpc("complete_challenge", {
+                "p_challenge_id": challenge_id,
+                "p_user_id": user_id,
+                "p_hints_used": hints_used,
+                "p_quality_score": result["code_quality"].get("score", 80)
+            }).execute()
+            result["xp_awarded"] = (
+                completion_data.data.get("xp_earned", 50)
+                if completion_data.data else 50
+            )
+        except Exception as e:
+            logger.warning(f"XP award RPC failed: {e}")
+            result["xp_awarded"] = 50
     else:
         supabase.table("code_challenges").update({
             "attempts": (ch.get("attempts", 0) or 0) + 1

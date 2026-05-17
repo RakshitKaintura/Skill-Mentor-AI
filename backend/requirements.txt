@@ -19,3 +19,6 @@ docling
 slowapi
 redis
 pytest-mock
+litellm
+httpx
+tiktoken

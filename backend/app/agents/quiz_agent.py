@@ -5,14 +5,14 @@ Generates adaptive quizzes, evaluates answers, and provides pedagogical feedback
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential
-from google.genai import types
 
-from app.core.gemini import get_gemini_client  # Standardized Client pattern
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.gemini import get_gemini_client
+from app.core.llm_router import llm_router
 from app.services.rag_service import retrieve_chunks, format_rag_context
 
 logger = logging.getLogger(__name__)
@@ -47,21 +47,17 @@ def _generate_with_model_failover(client, prompt: str, config):
 
 
 SYSTEM_PROMPT = """You are the Senior Examiner for SkillMentor AI.
-Your goal is to create high-fidelity, adaptive assessments that measure conceptual 
-depth rather than rote memorization. 
-
-INSTRUCTIONS:
-1. OUTPUT: Return ONLY a valid JSON object. Do not include markdown or explanations.
-2. TYPES: Mix Multiple Choice (MCQ), True/False, and Code Output Analysis.
-3. ADAPTIVITY: Adjust question complexity based on the student's historical performance.
-4. FEEDBACK: Each question must include a 'pedagogical_explanation' that clarifies 
-   the logic behind the correct answer and why distractors are incorrect."""
+Create adaptive assessments that measure conceptual depth, not rote memorisation.
+CRITICAL:
+- Return ONLY a valid JSON object. No markdown, no explanations.
+- Mix MCQ, True/False, and Code Output Analysis question types.
+- Each question must include a brief 'explanation' for the correct answer."""
 
 
 def _build_fallback_quiz(topic: str, difficulty: str, num_questions: int) -> Dict[str, Any]:
     """Create a deterministic quiz when model output is unavailable or malformed."""
     safe_count = max(3, min(num_questions, 10))
-    questions: List[Dict[str, Any]] = []
+    questions: list[Dict[str, Any]] = []
 
     for idx in range(1, safe_count + 1):
         questions.append({
@@ -121,12 +117,12 @@ async def generate_quiz(
     if normalized_difficulty not in {"beginner", "intermediate", "advanced"}:
         normalized_difficulty = "beginner"
 
-    # 1. Fetch RAG Context (Project specific materials)
+    # 1. Fetch RAG Context
     rag_chunks = await retrieve_chunks(
-        query=f"Core concepts of {topic} in {skill}", 
+        query=f"Core concepts of {topic} in {skill}",
         user_id=user_id,
         skill_tag=skill.lower(),
-        top_k=4
+        top_k=3
     )
     rag_context = format_rag_context(rag_chunks)
 
@@ -155,7 +151,7 @@ async def generate_quiz(
                 return float(score)
             return 0.0
 
-        avg_score = sum((_score_value(row) / _quiz_denominator(row)) for row in prev_results.data) / len(prev_results.data)
+        avg_score = sum((_score_value(dict(row)) / _quiz_denominator(dict(row))) for row in prev_results.data) / len(prev_results.data)  # type: ignore[arg-type]
         if avg_score > 0.85:
             history_context = "The student is excelling. Increase difficulty to include complex application scenarios."
         elif avg_score < 0.50:
@@ -197,16 +193,12 @@ async def generate_quiz(
 
     quiz_data: Dict[str, Any]
     try:
-        response = _generate_with_model_failover(
-            client,
-            prompt,
-            types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                response_mime_type='application/json'
-            ),
+        raw_text = await llm_router.generate_json(
+            prompt=prompt,
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=8192,
         )
-
-        quiz_data = json.loads(response.text)
+        quiz_data = json.loads(raw_text)
         if not isinstance(quiz_data.get("questions"), list) or not quiz_data["questions"]:
             raise ValueError("AI returned quiz without questions.")
     except Exception as e:
@@ -232,13 +224,13 @@ async def generate_quiz(
     if not row.data:
         raise RuntimeError("Failed to persist quiz to database.")
 
-    quiz_data["quiz_id"] = row.data[0]["id"]
+    quiz_data["quiz_id"] = row.data[0]["id"]  # type: ignore[index]
     return quiz_data
 
 async def evaluate_quiz(
     quiz_id: str,
     user_id: str,
-    user_answers: List[Dict[str, Any]],
+    user_answers: list[Dict[str, Any]],
     time_taken: int,
 ) -> Dict[str, Any]:
     """
@@ -251,14 +243,14 @@ async def evaluate_quiz(
     if not quiz_row.data:
         raise ValueError("Assessment record not found.")
 
-    quiz_topic = quiz_row.data.get("topic") or "General"
-    quiz_skill = quiz_row.data.get("skill") or "General"
-    questions = quiz_row.data["questions"]
+    quiz_topic = quiz_row.data.get("topic") or "General"  # type: ignore[union-attr]
+    quiz_skill = quiz_row.data.get("skill") or "General"  # type: ignore[union-attr]
+    questions: list = quiz_row.data["questions"]  # type: ignore[index]
     results = []
     total_score = 0
     
     # 2. Grading Logic
-    for q in questions:
+    for q in questions:  # type: ignore[union-attr]
         # Find user's answer for this specific question ID
         user_ans = next((a["answer"] for a in user_answers if str(a["question_id"]) == str(q["id"])), None)
         is_correct = (user_ans == q["correct_answer"]) if user_ans else False
@@ -276,12 +268,12 @@ async def evaluate_quiz(
             "points_earned": points_earned
         })
 
-    total_points = sum(q.get("points", 10) for q in questions)
+    total_points = sum(q.get("points", 10) for q in questions)  # type: ignore[union-attr]
     percentage = (total_score / max(total_points, 1)) * 100
     passed = percentage >= 70
 
-    # 3. Personalized AI Feedback
-    feedback = await _generate_quiz_feedback(
+    # 3. Deterministic Feedback (no extra LLM call)
+    feedback = _generate_quiz_feedback(
         topic=quiz_topic,
         skill=quiz_skill,
         percentage=percentage,
@@ -321,26 +313,15 @@ async def evaluate_quiz(
         "results": results
     }
 
-async def _generate_quiz_feedback(topic: str, skill: str, percentage: float, wrong_answers: List) -> str:
-    """Generates pedagogical encouragement using Gemini."""
+def _generate_quiz_feedback(topic: str, skill: str, percentage: float, wrong_answers: list) -> str:
+    """Generates encouraging, deterministic feedback without an extra LLM call."""
     if percentage >= 95:
         return f"Exceptional mastery of {topic}! You've demonstrated a deep understanding of {skill} principles."
-
-    client = get_gemini_client()
-    wrong_summary = "\n".join([f"- {w['user_answer']} vs {w['correct_answer']}" for w in wrong_answers[:2]])
-
-    prompt = f"""
-    The student scored {percentage:.0f}% on {topic} ({skill}).
-    Significant errors occurred in these areas:
-    {wrong_summary}
-
-    Provide a 2-sentence encouraging feedback note. 
-    Focus on one specific area for improvement. Keep it professional and warm.
-    """
-
-    resp = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(temperature=0.7)
-    )
-    return resp.text.strip()
+    if percentage >= 75:
+        return f"Great work on {topic}! You have a solid grasp of {skill}. Review the questions you missed to reinforce your understanding."
+    if percentage >= 50:
+        if wrong_answers:
+            focus = wrong_answers[0].get('correct_answer', topic)
+            return f"Good effort on {topic}! Focus on revisiting '{focus}' and similar concepts to level up your {skill} skills."
+        return f"Good effort on {topic}! Revisiting the lesson material will help solidify your {skill} understanding."
+    return f"Keep going with {topic}! It takes practice to master {skill}. Re-read the lesson, then try the quiz again — you've got this!"

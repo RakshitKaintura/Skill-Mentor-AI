@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronUp, Brain, Sparkles, Zap } from 'lucide-react'
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -193,9 +194,9 @@ export function ThoughtProcess({
       }}
     >
       {/* ── Header ── */}
-      <button
+      <div
         onClick={() => setIsExpanded(e => !e)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-app-surface)_94%,var(--color-app-primary)_6%)]"
+        className="cursor-pointer w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-app-surface)_94%,var(--color-app-primary)_6%)]"
       >
         <div className="flex items-center gap-2">
           {/* Status indicator */}
@@ -247,7 +248,7 @@ export function ThoughtProcess({
           {isExpanded ? <ChevronUp size={14} style={{ color: 'var(--color-app-text-secondary)' }} />
                       : <ChevronDown size={14} style={{ color: 'var(--color-app-text-secondary)' }} />}
         </div>
-      </button>
+      </div>
 
       {/* ── Collapsible body ── */}
       {isExpanded && (
@@ -316,13 +317,7 @@ export function ThoughtProcess({
               >
                 ✍️ Generating Response
               </p>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: 'var(--color-app-text-primary)', whiteSpace: 'pre-wrap' }}
-              >
-                {content}
-                {isStreaming && <span className="animate-pulse text-[var(--color-app-primary)]">▌</span>}
-              </p>
+              <MarkdownRenderer content={isStreaming ? content + '▌' : content} />
             </div>
           )}
 
