@@ -176,9 +176,14 @@ async def run_test_cases(
         stdin = str(tc.get("input", ""))
         expected = str(tc.get("expected_output", "")).strip()
         description = tc.get("description", f"Test {i + 1}")
+        test_code = tc.get("test_code", "")
+
+        code_to_run = source_code
+        if test_code:
+            code_to_run = f"{source_code}\n\n{test_code}"
 
         try:
-            exec_result = await execute_code(source_code, language, stdin=stdin)
+            exec_result = await execute_code(code_to_run, language, stdin=stdin)
             actual = exec_result.stdout.strip()
             passed = actual == expected
 

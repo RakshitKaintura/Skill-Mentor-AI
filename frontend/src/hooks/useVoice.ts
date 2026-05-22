@@ -5,6 +5,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 export type VoiceState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'error'
 
 export interface VoiceMessage {
+  id: string
   role: 'assistant' | 'user'
   text: string
   time: Date
@@ -25,6 +26,7 @@ export function useVoice(options: UseVoiceOptions) {
   const [isMuted, setIsMuted]       = useState(false)
   const [isPaused, setIsPaused]     = useState(false)
   const [durationSeconds, setDurationSeconds] = useState(0)
+  const [activeSpeech, setActiveSpeech]       = useState<{ id: string, charIndex: number } | null>(null)
 
   const wsRef         = useRef<WebSocket | null>(null)
   const mediaRecorder = useRef<MediaRecorder | null>(null)
@@ -81,7 +83,7 @@ export function useVoice(options: UseVoiceOptions) {
     isPausedRef.current = isPaused
   }, [isPaused])
 
-  const speakAssistantText = useCallback((text: string) => {
+  const speakAssistantText = useCallback((text: string, messageId: string) => {
     if (isMuted) return
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
 
@@ -91,8 +93,17 @@ export function useVoice(options: UseVoiceOptions) {
     utterance.rate = 1
     utterance.pitch = 1
 
-    utterance.onstart = () => setState('speaking')
+    utterance.onstart = () => {
+      setState('speaking')
+      setActiveSpeech({ id: messageId, charIndex: 0 })
+    }
+    utterance.onboundary = (e) => {
+      if (e.name === 'word') {
+        setActiveSpeech({ id: messageId, charIndex: e.charIndex })
+      }
+    }
     utterance.onend = () => {
+      setActiveSpeech(null)
       if (wsRef.current?.readyState === WebSocket.OPEN && !isPausedRef.current) {
         setState('listening')
       }
@@ -117,8 +128,10 @@ export function useVoice(options: UseVoiceOptions) {
   }, [state])
 
   const addMessage = useCallback((text: string, role: 'user' | 'assistant') => {
-    setTranscript(prev => [...prev, { role, text, time: new Date() }])
+    const id = Math.random().toString(36).substring(7)
+    setTranscript(prev => [...prev, { id, role, text, time: new Date() }])
     options.onTranscript?.(text, role)
+    return id
   }, [options])
 
   const start = useCallback(async () => {
@@ -164,9 +177,9 @@ export function useVoice(options: UseVoiceOptions) {
         switch (msg.type) {
           case 'transcript_user': addMessage(msg.text, 'user'); setState('listening'); break
           case 'transcript_ai': {
-            addMessage(msg.text, 'assistant')
+            const msgId = addMessage(msg.text, 'assistant')
             if (!hasServerAudioRef.current) {
-              speakAssistantText(msg.text)
+              speakAssistantText(msg.text, msgId)
             }
             break
           }
@@ -215,6 +228,7 @@ export function useVoice(options: UseVoiceOptions) {
     startTimeRef.current  = 0
     setIsPaused(false)
     setDurationSeconds(0)
+    setActiveSpeech(null)
     setState('idle')
   }, [])
 
@@ -266,6 +280,7 @@ export function useVoice(options: UseVoiceOptions) {
     isMuted,
     isPaused,
     durationSeconds,
+    activeSpeech,
     start,
     stop,
     toggleMute,
@@ -274,3 +289,5 @@ export function useVoice(options: UseVoiceOptions) {
     resume,
   }
 }
+
+export type UseVoiceReturn = ReturnType<typeof useVoice>

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     judge0_api_key: str = ""  # Not required for the free CE instance
 
     # AI Model Configuration
-    gemini_model: str = "gemini-3-flash-preview"
+    gemini_model: str = "gemini-3.1-flash-lite"
     gemini_embed_model: str = "text-embedding-004"
 
     # RAG Settings

@@ -68,6 +68,7 @@ async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
 
     if existing.data:
         row = existing.data[0]
+        assert isinstance(row, dict), "Expected dict from existing lesson query"
         return {
             "lesson_id": row["id"],
             "topic": row["topic"],
@@ -142,6 +143,7 @@ async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
             "roadmap_id": req.roadmap_id,
             "user_id": req.user_id,
             "topic": lesson_obj.topic,
+            "next_topic": lesson_obj.next_topic,
             "week_number": lesson_obj.week_number,
             "phase_number": phase_number,
             "steps": [step.model_dump() for step in lesson_obj.steps],
@@ -155,11 +157,6 @@ async def generate_lesson(req: GenerateLessonRequest) -> Dict[str, Any]:
             raise RuntimeError("Database insertion failed.")
             
         lesson_id = result.data[0]["id"]  # type: ignore[index]
-
-        # Update current progress in the roadmap
-        supabase.table("roadmaps").update(
-            {"current_topic": lesson_obj.next_topic}
-        ).eq("id", req.roadmap_id).execute()
 
         return {
             "lesson_id": lesson_id,
@@ -207,4 +204,61 @@ async def complete_lesson(user_id: str, lesson_id: str, time_spent: int = 0) -> 
     supabase.rpc("increment_xp", {"p_user_id": user_id, "p_amount": 100}).execute()
     supabase.rpc("update_streak", {"p_user_id": user_id}).execute()
     
+    # ── Deterministic Roadmap Advancement ──
+    # To keep the user perfectly synced with their predefined roadmap phases and weeks,
+    # we determine the next topic based on the total number of completed lessons.
+    roadmap_id = None
+    lesson_result = supabase.table("lessons").select("roadmap_id").eq("id", lesson_id).single().execute()
+    if lesson_result.data:
+        roadmap_id = lesson_result.data.get("roadmap_id")
+        
+    if roadmap_id:
+        roadmap_res = supabase.table("roadmaps").select("phases").eq("id", roadmap_id).single().execute()
+        if roadmap_res.data and roadmap_res.data.get("phases"):
+            phases = roadmap_res.data["phases"]
+            
+            # Flatten the predefined topics into a sequential curriculum
+            curriculum = []
+            for p in phases:
+                p_name = p.get("name", "")
+                weeks = p.get("duration_weeks", p.get("weeks", []))
+                p_topics = p.get("topics", [])
+                
+                num_topics = len(p_topics)
+                num_weeks = len(weeks)
+                
+                for i, t in enumerate(p_topics):
+                    # Distribute topics evenly across the weeks assigned to this phase
+                    assigned_week = 1
+                    if num_weeks > 0:
+                        week_idx = (i * num_weeks) // max(1, num_topics)
+                        assigned_week = weeks[week_idx]
+                        
+                    curriculum.append({
+                        "topic": t,
+                        "phase": p_name,
+                        "week": assigned_week
+                    })
+            
+            # Count how many lessons this user has completed for this roadmap
+            completed_res = supabase.table("lessons").select("id").eq("roadmap_id", roadmap_id).eq("completed", True).execute()
+            completed_count = len(completed_res.data) if completed_res.data else 0
+            
+            # Advance to the exact next topic in the curriculum
+            if completed_count < len(curriculum):
+                next_item = curriculum[completed_count]
+                supabase.table("roadmaps").update({
+                    "current_topic": next_item["topic"],
+                    "current_phase": next_item["phase"],
+                    "current_week": next_item["week"]
+                }).eq("id", roadmap_id).execute()
+            else:
+                # If they finished everything, ensure we stay on the last phase but mark complete
+                if curriculum:
+                    last_item = curriculum[-1]
+                    supabase.table("roadmaps").update({
+                        "current_phase": last_item["phase"],
+                        "current_week": last_item["week"]
+                    }).eq("id", roadmap_id).execute()
+
     return {"message": "Great job! You've earned 100 XP.", "status": "success"}

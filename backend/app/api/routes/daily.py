@@ -23,6 +23,9 @@ class DailyChallengeRequest(BaseModel):
 class CompleteRequest(BaseModel):
     challenge_id: str
     user_id:      str
+    answers:      dict[str, str] | None = None
+    code:         str | None = None
+    theory:       str | None = None
 
 
 class MarkReadRequest(BaseModel):
@@ -42,7 +45,11 @@ async def get_daily_challenge(req: DailyChallengeRequest):
 @router.post("/challenge/complete")
 async def complete_challenge_endpoint(req: CompleteRequest):
     try:
-        result = await complete_daily_challenge(req.challenge_id, req.user_id)
+        result = await complete_daily_challenge(
+            req.challenge_id, 
+            req.user_id,
+            submission={"answers": req.answers, "code": req.code, "theory": req.theory}
+        )
         return {"success": True, **result}
     except Exception as e:
         raise HTTPException(500, str(e))

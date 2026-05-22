@@ -73,8 +73,18 @@ async def generate_challenge(
       "starter_code": "Boilerplate code for the student",
       "solution_code": "Reference implementation",
       "test_cases": [
-        {{ "input": "...", "expected_output": "...", "description": "Happy path" }},
-        {{ "input": "...", "expected_output": "...", "description": "Edge case" }}
+        {{ 
+          "input": "...", 
+          "expected_output": "...", 
+          "description": "Happy path",
+          "test_code": "Code that appends to student code, calls their function using the input, and prints to stdout. The printed output MUST exactly match expected_output."
+        }},
+        {{ 
+          "input": "...", 
+          "expected_output": "...", 
+          "description": "Edge case (e.g. throws Error)",
+          "test_code": "Code that appends to student code, calls their function using the input, and prints to stdout. If catching an error, ensure you print it exactly formatted to match expected_output (e.g., console.log(e.toString()) or console.log(e.message) depending on what expected_output says)."
+        }}
       ],
       "hints": [
         {{ "level": 1, "hint": "Conceptual/Logic hint" }},
@@ -96,7 +106,7 @@ async def generate_challenge(
     )
 
     try:
-        challenge = json.loads(response.text)
+        challenge = json.loads(response.text or "{}")
     except Exception as e:
         logger.error(f"Failed to parse AI Challenge JSON: {e}")
         raise ValueError("AI failed to generate a valid challenge structure.")
@@ -118,10 +128,10 @@ async def generate_challenge(
         "hints": challenge["hints"],
     }).execute()
 
-    if not db_result.data:
+    if not db_result.data or not isinstance(db_result.data[0], dict):
         raise RuntimeError("Database storage failed for challenge.")
 
-    challenge["challenge_id"] = db_result.data[0]["id"]
+    challenge["challenge_id"] = db_result.data[0].get("id")
     return challenge
 
 async def get_personalized_hint(
@@ -136,12 +146,14 @@ async def get_personalized_hint(
 
     # Fetch original challenge context
     challenge_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).single().execute()
-    if not challenge_record.data:
+    if not challenge_record.data or not isinstance(challenge_record.data, dict):
         raise ValueError("Challenge context not found.")
 
     ch = challenge_record.data
     base_hints = ch.get("hints", [])
-    static_hint = next((h["hint"] for h in base_hints if h["level"] == hint_level), "")
+    if not isinstance(base_hints, list):
+        base_hints = []
+    static_hint = next((h.get("hint", "") for h in base_hints if isinstance(h, dict) and h.get("level") == hint_level), "")
 
     prompt = f"""
     PERSONALIZED HINT REQUEST:
@@ -169,7 +181,7 @@ async def get_personalized_hint(
         )
     )
 
-    hint_data = json.loads(response.text)
+    hint_data = json.loads(response.text or "{}")
     
     # Track interaction
     supabase.table("code_challenges").update({
@@ -191,10 +203,17 @@ async def evaluate_submission(
 
     ch_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).single().execute()
     ch = ch_record.data
+    if not isinstance(ch, dict):
+        raise ValueError("Invalid challenge data format.")
 
     # ── Step 1: Real code execution via Judge0 ──────────────────────────────
-    test_cases = ch.get("test_cases", [])
+    raw_test_cases = ch.get("test_cases", [])
+    if not isinstance(raw_test_cases, list):
+        raw_test_cases = []
+    test_cases = [tc for tc in raw_test_cases if isinstance(tc, dict)]
     language = ch.get("language", "javascript")
+    if not isinstance(language, str):
+        language = "javascript"
     
     real_results = await run_test_cases(user_code, language, test_cases)
     
@@ -247,7 +266,7 @@ async def evaluate_submission(
                 response_mime_type='application/json'
             )
         )
-        ai_data = json.loads(ai_response.text)
+        ai_data = json.loads(ai_response.text or "{}")
         result["overall_feedback"] = ai_data.get("overall_feedback", "")
         result["code_quality"] = ai_data.get("code_quality", {"score": 70, "comments": []})
         result["feedback"] = ai_data.get("feedback", {})
@@ -268,14 +287,17 @@ async def evaluate_submission(
             }).execute()
             result["xp_awarded"] = (
                 completion_data.data.get("xp_earned", 50)
-                if completion_data.data else 50
+                if isinstance(completion_data.data, dict) else 50
             )
         except Exception as e:
             logger.warning(f"XP award RPC failed: {e}")
             result["xp_awarded"] = 50
     else:
+        attempts = ch.get("attempts", 0)
+        if not isinstance(attempts, int):
+            attempts = 0
         supabase.table("code_challenges").update({
-            "attempts": (ch.get("attempts", 0) or 0) + 1
+            "attempts": attempts + 1
         }).eq("id", challenge_id).execute()
 
     return result
@@ -322,7 +344,7 @@ async def explain_error(
     )
 
     try:
-        return json.loads(response.text)
+        return json.loads(response.text or "{}")
     except Exception:
         return {
             "root_cause": "The error could not be parsed reliably.",

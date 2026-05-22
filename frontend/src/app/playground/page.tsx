@@ -17,6 +17,7 @@ function PlaygroundPageContent() {
   } = usePlayground()
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const hasFetched = useRef(false)
   const [activeTab, setActiveTab] = useState<'challenge' | 'result' | 'hints'>('challenge')
   const [lineCount, setLineCount]  = useState(1)
 
@@ -28,12 +29,21 @@ function PlaygroundPageContent() {
   const language   = params.get('language')  || 'javascript'
 
   useEffect(() => {
-    if (user && topic && skill && roadmapId && lessonId) {
+    if (user && topic && skill && roadmapId && lessonId && !hasFetched.current) {
+      hasFetched.current = true
       generateChallenge({ user_id: user.id, roadmap_id: roadmapId, lesson_id: lessonId, topic, skill, difficulty, language })
     }
   }, [user, topic, skill, roadmapId, lessonId, difficulty, language, generateChallenge])
 
-  const visibleTab = result ? 'result' : hint ? 'hints' : activeTab
+  useEffect(() => {
+    if (result) setActiveTab('result')
+  }, [result])
+
+  useEffect(() => {
+    if (hint) setActiveTab('hints')
+  }, [hint])
+
+  const visibleTab = activeTab
 
   const handleCodeChange = (val: string) => {
     setCode(val)

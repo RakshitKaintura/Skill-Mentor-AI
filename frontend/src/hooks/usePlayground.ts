@@ -27,6 +27,21 @@ export function usePlayground() {
     difficulty?: string
     language?: string
   }) => {
+    const cacheKey = `playground_v3_${params.lesson_id}_${params.topic}_${params.difficulty}_${params.language}`
+    
+    // 1. Try to load from session storage
+    try {
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        const data = JSON.parse(cached)
+        setChallenge(data.challenge)
+        setCode(data.challenge.starter_code)
+        return
+      }
+    } catch (e) {
+      // Ignore cache errors
+    }
+
     setLoading(true)
     setError(null)
     setResult(null)
@@ -40,6 +55,12 @@ export function usePlayground() {
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.detail || 'Failed to generate challenge')
+      
+      // Save to session storage
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(data))
+      } catch (e) {}
+
       setChallenge(data.challenge)
       setCode(data.challenge.starter_code)
     } catch (e: unknown) {

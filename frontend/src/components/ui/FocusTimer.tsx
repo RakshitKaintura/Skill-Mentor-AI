@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import {
   Play, Pause, SkipForward, RotateCcw,
-  Settings, X, Zap, Coffee, Brain,
+  Settings, X, Zap, Coffee, Brain, Minimize2, Maximize2
 } from 'lucide-react'
 import { usePomodoro, type TimerPhase } from '@/hooks/usePomodoro'
 
@@ -17,22 +17,22 @@ interface Props {
   /** Called on each completed focus session so the parent can award XP */
   onSessionComplete?: (session: number, xpEarned: number) => void
   className?: string
+  isMinimized?: boolean
+  onToggleMinimize?: () => void
 }
 
-// ── Phase display metadata ────────────────────────────────────
-
-const PHASE_META: Record<TimerPhase, { label: string; color: string; Icon: typeof Brain; bg: string }> = {
-  idle:        { label: 'Ready to focus',    color: 'var(--color-app-primary)', Icon: Brain,       bg: 'color-mix(in oklab, var(--color-app-surface-cool) 60%, var(--color-app-surface) 40%)'   },
-  focus:       { label: 'Focus Session',     color: 'var(--color-app-primary)', Icon: Brain,       bg: 'color-mix(in oklab, var(--color-app-surface-cool) 60%, var(--color-app-surface) 40%)'   },
-  short_break: { label: 'Short Break ☕',    color: '#4FFFA0',                  Icon: Coffee,      bg: 'color-mix(in oklab, var(--color-app-surface-mint) 60%, var(--color-app-surface) 40%)'   },
-  long_break:  { label: 'Long Break 🌿',     color: '#C77DFF',                  Icon: Coffee,      bg: 'color-mix(in oklab, var(--color-app-surface-lavender) 60%, var(--color-app-surface) 40%)' },
+const PHASE_META: Record<TimerPhase, { label: string; color: string; gradient: { from: string, to: string }; Icon: typeof Brain; bg: string }> = {
+  idle:        { label: 'Ready to focus',    color: '#FF5A5F', gradient: { from: '#FF5A5F', to: '#FF8A4C' }, Icon: Brain,       bg: 'color-mix(in oklab, #FF5A5F 8%, var(--color-app-surface) 92%)'   },
+  focus:       { label: 'Focus Session',     color: '#FF5A5F', gradient: { from: '#FF5A5F', to: '#FF8A4C' }, Icon: Brain,       bg: 'color-mix(in oklab, #FF5A5F 8%, var(--color-app-surface) 92%)'   },
+  short_break: { label: 'Short Break ☕',    color: '#4FFFA0', gradient: { from: '#4FFFA0', to: '#00D1FF' }, Icon: Coffee,      bg: 'color-mix(in oklab, #4FFFA0 8%, var(--color-app-surface) 92%)'   },
+  long_break:  { label: 'Long Break 🌿',     color: '#C77DFF', gradient: { from: '#C77DFF', to: '#FF6B6B' }, Icon: Coffee,      bg: 'color-mix(in oklab, #C77DFF 8%, var(--color-app-surface) 92%)' },
 }
 
 // ── Circular SVG ring ─────────────────────────────────────────
 
 function TimerRing({
-  secondsLeft, totalSeconds, color, phase,
-}: { secondsLeft: number; totalSeconds: number; color: string; phase: TimerPhase }) {
+  secondsLeft, totalSeconds, color, gradient, phase,
+}: { secondsLeft: number; totalSeconds: number; color: string; gradient: { from: string, to: string }; phase: TimerPhase }) {
   const R    = 52
   const CIRC = 2 * Math.PI * R
   const pct  = phase === 'idle' ? 1 : secondsLeft / Math.max(1, totalSeconds)
@@ -50,13 +50,17 @@ function TimerRing({
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
+          <linearGradient id={`timer-grad-${phase}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={gradient.from} />
+            <stop offset="100%" stopColor={gradient.to} />
+          </linearGradient>
         </defs>
         {/* Track */}
         <circle cx="70" cy="70" r={R} fill="none"
           stroke="var(--color-app-border)" strokeWidth="8" />
         {/* Progress arc */}
         <circle cx="70" cy="70" r={R} fill="none"
-          stroke={color} strokeWidth="8" strokeLinecap="round"
+          stroke={`url(#timer-grad-${phase})`} strokeWidth="8" strokeLinecap="round"
           strokeDasharray={`${dash.toFixed(2)} ${gap.toFixed(2)}`}
           transform="rotate(-90 70 70)"
           filter="url(#timer-glow)"
@@ -155,7 +159,7 @@ function SessionDots({ count, longBreakEvery = 4 }: { count: number; longBreakEv
 
 // ── Main component ────────────────────────────────────────────
 
-export function FocusTimer({ onSessionComplete, className = '' }: Props) {
+export function FocusTimer({ onSessionComplete, className = '', isMinimized, onToggleMinimize }: Props) {
   const [showSettings, setShowSettings] = useState(false)
   const [focusMins,    setFocusMins]    = useState(25)
   const [breakMins,    setBreakMins]    = useState(5)
@@ -168,6 +172,52 @@ export function FocusTimer({ onSessionComplete, className = '' }: Props) {
     setFocusMins(f); setBreakMins(b); setLongBreak(lb)
     pomodoro.configure({ focusMins: f, shortBreakMins: b, longBreakMins: lb })
     if (pomodoro.phase === 'idle') pomodoro.reset()
+  }
+
+  const mins = Math.floor(pomodoro.secondsLeft / 60)
+  const secs = pomodoro.secondsLeft % 60
+
+  if (isMinimized) {
+    return (
+      <div 
+        className={`flex items-center gap-3 px-4 py-2 rounded-full cursor-grab active:cursor-grabbing shadow-lg transition-all duration-300 ${className}`}
+        style={{
+          border: `1px solid ${
+            pomodoro.phase === 'focus'
+              ? 'color-mix(in oklab, var(--color-app-primary) 40%, var(--color-app-border))'
+              : pomodoro.phase === 'short_break'
+              ? 'color-mix(in oklab, #4FFFA0 40%, var(--color-app-border))'
+              : pomodoro.phase === 'long_break'
+              ? 'color-mix(in oklab, #C77DFF 40%, var(--color-app-border))'
+              : 'var(--color-app-border)'
+          }`,
+          background: 'var(--color-app-surface)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <meta.Icon size={14} style={{ color: meta.color }} />
+        <span className="font-display font-black text-sm tabular-nums" style={{ color: meta.color, letterSpacing: '-0.5px' }}>
+          {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+        </span>
+        
+        <div className="flex items-center gap-1 border-l pl-3 ml-1" style={{ borderColor: 'var(--color-app-border)' }}>
+          {pomodoro.phase === 'idle' ? (
+            <button onClick={pomodoro.start} className="p-1.5 rounded-full hover:bg-[var(--color-app-bg)] transition-colors">
+              <Play size={12} fill="currentColor" style={{ color: 'var(--color-app-text-primary)' }} />
+            </button>
+          ) : (
+            <button onClick={pomodoro.isRunning ? pomodoro.pause : pomodoro.resume} className="p-1.5 rounded-full hover:bg-[var(--color-app-bg)] transition-colors">
+              {pomodoro.isRunning ? <Pause size={12} fill="currentColor" style={{ color: 'var(--color-app-text-primary)' }} /> : <Play size={12} fill="currentColor" style={{ color: 'var(--color-app-text-primary)' }} />}
+            </button>
+          )}
+          {onToggleMinimize && (
+            <button onClick={onToggleMinimize} className="p-1.5 rounded-full hover:bg-[var(--color-app-bg)] transition-colors text-[var(--color-app-text-secondary)]">
+              <Maximize2 size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -207,6 +257,13 @@ export function FocusTimer({ onSessionComplete, className = '' }: Props) {
             style={{ color: 'var(--color-app-text-secondary)' }}>
             <Settings size={13} />
           </button>
+          {onToggleMinimize && (
+            <button onClick={onToggleMinimize}
+              className="p-1.5 rounded-lg transition-colors hover:opacity-70"
+              style={{ color: 'var(--color-app-text-secondary)' }}>
+              <Minimize2 size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -226,6 +283,7 @@ export function FocusTimer({ onSessionComplete, className = '' }: Props) {
           secondsLeft={pomodoro.secondsLeft}
           totalSeconds={pomodoro.totalSeconds}
           color={meta.color}
+          gradient={meta.gradient}
           phase={pomodoro.phase}
         />
 
@@ -244,7 +302,7 @@ export function FocusTimer({ onSessionComplete, className = '' }: Props) {
           {pomodoro.phase === 'idle' ? (
             <button onClick={pomodoro.start}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
-              style={{ background: 'var(--color-app-primary)', color: '#fff', boxShadow: '0 4px 14px rgba(26,115,232,0.35)' }}>
+              style={{ background: `linear-gradient(135deg, ${meta.gradient.from}, ${meta.gradient.to})`, color: '#fff', boxShadow: `0 4px 14px ${meta.color}50` }}>
               <Play size={14} fill="white" />
               Start Focus
             </button>
@@ -253,8 +311,8 @@ export function FocusTimer({ onSessionComplete, className = '' }: Props) {
               {/* Pause / Resume */}
               <button
                 onClick={pomodoro.isRunning ? pomodoro.pause : pomodoro.resume}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-80 active:scale-95"
-                style={{ background: meta.color, color: '#fff' }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-95"
+                style={{ background: `linear-gradient(135deg, ${meta.gradient.from}, ${meta.gradient.to})`, color: '#fff', boxShadow: `0 4px 14px ${meta.color}40` }}
               >
                 {pomodoro.isRunning ? <><Pause size={12} fill="white" />Pause</> : <><Play size={12} fill="white" />Resume</>}
               </button>

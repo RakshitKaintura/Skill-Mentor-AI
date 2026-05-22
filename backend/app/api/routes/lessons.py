@@ -58,6 +58,20 @@ async def ask_doubt(req: DoubtRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Doubt resolution failed: {str(e)}")
 
+@router.delete("/cleanup/{user_id}")
+async def cleanup_user_lessons(user_id: str):
+    """
+    Deletes all previous lessons for a user when a new browser session is started.
+    This ensures that old generated lessons are not stored permanently.
+    """
+    supabase = get_supabase()
+    try:
+        # Delete all lessons for this user
+        result = supabase.table("lessons").delete().eq("user_id", user_id).execute()
+        return {"message": "Lessons cleaned up for new session", "status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup lessons: {str(e)}")
+
 @router.get("/user/{user_id}")
 async def list_lessons(user_id: str, limit: int = 30):
     """Retrieves a paginated list of generated lessons for a specific user profile."""

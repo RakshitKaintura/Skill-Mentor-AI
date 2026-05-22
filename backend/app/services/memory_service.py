@@ -67,7 +67,8 @@ async def get_conversation_history(
             .limit(limit)
             .execute()
         )
-        return result.data or []
+        data = result.data or []
+        return [d for d in data if isinstance(d, dict)]
     except Exception as e:
         logger.warning("get_conversation_history failed: %s", e)
         return []
@@ -245,7 +246,9 @@ async def get_user_memory(user_id: str) -> str:
 
         memory_lines = []
         for row in reversed(rows):
-            created = row.get("created_at", "")
+            if not isinstance(row, dict):
+                continue
+            created = str(row.get("created_at", ""))
             try:
                 dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
                 date_str = dt.strftime("%b %d")
@@ -253,8 +256,10 @@ async def get_user_memory(user_id: str) -> str:
                 date_str = "Earlier"
 
             topics = row.get("topics") or []
-            topics_str = f" (Topics: {', '.join(topics)})" if topics else ""
-            summary = row.get("session_summary", "").strip()
+            if not isinstance(topics, list):
+                topics = []
+            topics_str = f" (Topics: {', '.join(str(t) for t in topics)})" if topics else ""
+            summary = str(row.get("session_summary", "")).strip()
             if summary:
                 memory_lines.append(f"• [{date_str}]{topics_str}: {summary}")
 
@@ -308,7 +313,7 @@ async def append_memory(
         )
         rows = all_entries.data or []
         if len(rows) > MAX_MEMORY_ENTRIES:
-            ids_to_delete = [r["id"] for r in rows[MAX_MEMORY_ENTRIES:]]
+            ids_to_delete = [r["id"] for r in rows[MAX_MEMORY_ENTRIES:] if isinstance(r, dict) and "id" in r]
             supabase.table("user_memory").delete().in_("id", ids_to_delete).execute()
             logger.debug("Evicted %d old memory entries for user %s", len(ids_to_delete), user_id)
 

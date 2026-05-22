@@ -5,6 +5,9 @@ import { Toaster } from 'sonner'
 import AnalyticsTracker from '@/components/AnalyticsTracker'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider'
+import { PomodoroProvider } from '@/hooks/usePomodoro'
+import { GlobalFocusWidget } from '@/components/ui/GlobalFocusWidget'
+import { SessionManager } from '@/components/SessionManager'
 import './globals.css'
 
 const manrope = Manrope({
@@ -59,8 +62,12 @@ export default function RootLayout({
           </Suspense>
 
           <main className="relative z-10 min-h-screen">
+            <SessionManager />
             <RealtimeProvider>
-              {children}
+              <PomodoroProvider>
+                <GlobalFocusWidget />
+                {children}
+              </PomodoroProvider>
             </RealtimeProvider>
           </main>
 

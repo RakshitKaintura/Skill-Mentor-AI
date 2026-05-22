@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -22,12 +22,16 @@ export interface UsePomodoroReturn {
   isRunning:      boolean
   isPaused:       boolean
   xpEarned:       number     // XP accumulated this study period
+  isWidgetOpen:   boolean
+  isWidgetMinimized: boolean
   start:          () => void
   pause:          () => void
   resume:         () => void
   skip:           () => void
   reset:          () => void
   configure:      (opts: Partial<PomodoroSession>) => void
+  toggleWidget:   (force?: boolean) => void
+  toggleMinimize: (force?: boolean) => void
 }
 
 const DEFAULT_CONFIG: PomodoroSession = {
@@ -40,11 +44,11 @@ const DEFAULT_CONFIG: PomodoroSession = {
 
 const XP_PER_FOCUS_SESSION = 50
 
-// ── Hook ─────────────────────────────────────────────────────
+const PomodoroContext = createContext<UsePomodoroReturn | null>(null)
 
-export function usePomodoro(
-  onSessionComplete?: (session: number, xpEarned: number) => void,
-): UsePomodoroReturn {
+// ── Provider ─────────────────────────────────────────────────────
+
+export function PomodoroProvider({ children, onSessionComplete }: { children: ReactNode, onSessionComplete?: (session: number, xpEarned: number) => void }) {
   const [config, setConfig]           = useState<PomodoroSession>(DEFAULT_CONFIG)
   const [phase, setPhase]             = useState<TimerPhase>('idle')
   const [secondsLeft, setSecondsLeft] = useState(0)
@@ -53,6 +57,8 @@ export function usePomodoro(
   const [isPaused, setIsPaused]       = useState(false)
   const [sessionsToday, setSessions]  = useState(0)
   const [xpEarned, setXpEarned]       = useState(0)
+  const [isWidgetOpen, setIsWidgetOpen] = useState(false)
+  const [isWidgetMinimized, setIsWidgetMinimized] = useState(false)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const phaseRef    = useRef<TimerPhase>('idle')
@@ -196,12 +202,46 @@ export function usePomodoro(
     setConfig(prev => ({ ...prev, ...opts }))
   }, [])
 
+  const toggleWidget = useCallback((force?: boolean) => {
+    setIsWidgetOpen(prev => force !== undefined ? force : !prev)
+  }, [])
+
+  const toggleMinimize = useCallback((force?: boolean) => {
+    setIsWidgetMinimized(prev => force !== undefined ? force : !prev)
+  }, [])
+
   // Cleanup on unmount
   useEffect(() => () => clearTick(), [clearTick])
 
-  return {
+  const value = {
     phase, secondsLeft, totalSeconds: totalSeconds || config.focusMins * 60,
     sessionsToday, isRunning, isPaused, xpEarned,
+    isWidgetOpen, isWidgetMinimized,
     start, pause, resume, skip, reset, configure,
+    toggleWidget, toggleMinimize
   }
+
+  return (
+    <PomodoroContext.Provider value={value}>
+      {children}
+    </PomodoroContext.Provider>
+  )
+}
+
+export function usePomodoro(
+  _onSessionComplete?: (session: number, xpEarned: number) => void,
+): UsePomodoroReturn {
+  const context = useContext(PomodoroContext)
+  if (!context) {
+    throw new Error('usePomodoro must be used within a PomodoroProvider')
+  }
+
+  // To support component-level onSessionComplete callbacks (like for analytics or toasts),
+  // we could potentially register them in the context, but for simplicity we rely on the
+  // context's provider callback for global XP rewards, and components can watch `sessionsToday` if needed.
+  // Actually, since FocusTimer is just rendering the state, the global Provider can handle the XP via `onSessionComplete`.
+  // Wait, LessonViewer passes onSessionComplete to FocusTimer which passes to usePomodoro.
+  // We'll let FocusTimer watch sessionsToday via useEffect instead to trigger its own callback.
+  
+  return context;
 }

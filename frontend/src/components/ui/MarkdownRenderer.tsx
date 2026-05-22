@@ -20,26 +20,37 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
           a: ({ node, ...props }) => (
             <a {...props} className="text-[var(--color-app-primary)] no-underline hover:underline" target="_blank" rel="noopener noreferrer" />
           ),
-          code({ node, inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '')
-            return !inline ? (
+          pre({ children, ...props }: any) {
+            const codeProps = children?.props || {};
+            const match = /language-(\w+)/.exec(codeProps.className || '');
+            const lang = match?.[1] || 'code';
+            
+            return (
               <div className="relative my-4 overflow-hidden rounded-md border border-[var(--color-app-border)] bg-[#0d1117] text-sm">
                 <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
-                  <span>{match?.[1] || 'code'}</span>
+                  <span>{lang}</span>
                 </div>
                 <div className="overflow-x-auto p-4">
-                  <code className={className} {...props}>
+                  <pre {...props} className="bg-transparent p-0 m-0">
                     {children}
-                  </code>
+                  </pre>
                 </div>
               </div>
-            ) : (
-              <code className="rounded-sm bg-[var(--color-app-surface-cool)] px-1.5 py-0.5 font-mono text-[0.85em] text-[var(--color-app-primary)]" {...props}>
+            )
+          },
+          code({ className, children, ...props }: any) {
+            const isLanguage = /language-(\w+)/.test(className || '');
+            const isMultiline = String(children).includes('\n');
+            
+            if (isLanguage || isMultiline) {
+              return <code className={className} {...props}>{children}</code>
+            }
+            return (
+              <code className="rounded-sm bg-[var(--color-app-surface-cool)] px-1.5 py-0.5 font-mono text-[0.85em] text-[var(--color-app-primary)] break-words" {...props}>
                 {children}
               </code>
             )
           },
-          pre: ({ node, ...props }) => <>{props.children}</>, // Avoid double wrapping since we handle it in `code`
           p: ({ node, ...props }) => <p {...props} className="mb-4 text-[var(--color-app-text-primary)] leading-relaxed last:mb-0" />,
           ul: ({ node, ...props }) => <ul {...props} className="mb-4 list-disc pl-5 text-[var(--color-app-text-primary)]" />,
           ol: ({ node, ...props }) => <ol {...props} className="mb-4 list-decimal pl-5 text-[var(--color-app-text-primary)]" />,

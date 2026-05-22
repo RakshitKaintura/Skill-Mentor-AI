@@ -1,8 +1,21 @@
-# 🚀 SkillMentor AI
-
-![SkillMentor AI Hero](./skill_mentor_ai_hero.png)
-
-**SkillMentor AI** is a cutting-edge, full-stack AI learning platform that transforms a learner's raw goal into a highly personalized, interactive, and guided study system. It combines dynamic roadmaps, tailored lessons, intelligent doubt-solving, real-time voice interaction, Socratic code coaching, career preparation, and comprehensive analytics into a single, cohesive product.
+<div align="center">
+  <h1>🚀 SkillMentor AI</h1>
+  <img src="./frontend/public/readme_images/Welcome_Page.png" alt="SkillMentor AI Hero">
+  <br />
+  <br />
+  <p>
+    <img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" alt="Next.js">
+    <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React">
+    <img src="https://img.shields.io/badge/TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind">
+    <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI">
+    <img src="https://img.shields.io/badge/Gemini_3.1-Google-orange?style=for-the-badge&logo=google" alt="Gemini">
+    <img src="https://img.shields.io/badge/LangGraph-AI-green?style=for-the-badge" alt="LangGraph">
+    <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
+  </p>
+  <p>
+    <strong>SkillMentor AI</strong> is a cutting-edge, full-stack AI learning platform that transforms a learner's raw goal into a highly personalized, interactive, and guided study system. It combines dynamic roadmaps, tailored lessons, intelligent doubt-solving, real-time voice interaction, Socratic code coaching, career preparation, and comprehensive analytics into a single, cohesive product.
+  </p>
+</div>
 
 ---
 
@@ -18,6 +31,40 @@
 - 🎙️ **Voice Learning**: Seamless voice interaction over WebSocket for hands-free tutoring and conversational learning.
 - 📚 **RAG-Powered Learning**: Upload your own study materials, books, or documents for grounded, contextual learning and querying.
 - 📊 **Admin & Analytics**: Deep user analytics and comprehensive admin dashboards for engagement insights.
+
+---
+
+## 📸 Platform Previews
+
+<p align="center">
+  <img src="./frontend/public/readme_images/Welcome_Page.png" width="48%" alt="Welcome Page" />
+  <img src="./frontend/public/readme_images/Dashboard.png" width="48%" alt="Dashboard" />
+</p>
+
+<p align="center">
+  <img src="./frontend/public/readme_images/RoadMap_Page.png" width="48%" alt="RoadMap Page" />
+  <img src="./frontend/public/readme_images/Lesson_Page.png" width="48%" alt="Lesson Page" />
+</p>
+
+<p align="center">
+  <img src="./frontend/public/readme_images/AI_Voice_Teaching.png" width="48%" alt="AI Voice Teaching" />
+  <img src="./frontend/public/readme_images/Mock_Interview_both_voice_and_typing_option.png" width="48%" alt="Mock Interview" />
+</p>
+
+<p align="center">
+  <img src="./frontend/public/readme_images/Career_Page.png" width="48%" alt="Career Page" />
+  <img src="./frontend/public/readme_images/Progress_Page.png" width="48%" alt="Progress Page" />
+</p>
+
+<p align="center">
+  <img src="./frontend/public/readme_images/AchievementPage1.png" width="32%" alt="Achievement Page 1" />
+  <img src="./frontend/public/readme_images/Achievement_Page2.png" width="32%" alt="Achievement Page 2" />
+  <img src="./frontend/public/readme_images/Achievement_Page3.png" width="32%" alt="Achievement Page 3" />
+</p>
+
+<p align="center">
+  <img src="./frontend/public/readme_images/Admin_Page.png" width="80%" alt="Admin Page" />
+</p>
 
 ---
 

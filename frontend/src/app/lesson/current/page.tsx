@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { LessonViewer } from './LessonViewer'
-import SectionContainer from '@/components/ui/SectionContainer'
+
 
 /**
  * Server Component: CurrentLessonPage
@@ -78,25 +78,25 @@ export default async function CurrentLessonPage({ searchParams }: CurrentLessonP
     .limit(1)
     .single()
 
+  // 5. Fetch user progress for stats
+  const { data: progress } = await supabase
+    .from('user_progress')
+    .select('streak_days, xp_points')
+    .eq('user_id', user.id)
+    .single()
+
   return (
-    <div className="min-h-screen page-tone-mint">
-      <SectionContainer className="py-8">
-        {/* LessonViewer is a Client Component that handles:
-          - Calling the /api/lesson/generate endpoint
-            - Rendering the 6-step lesson content
-            - Handling PDF generation and Doubt Solving
-        */}
-        <LessonViewer
-          roadmapId={roadmap.id}
-          topic={roadmap.current_topic ?? roadmap.skill}
-          skill={roadmap.skill}
-          level={roadmap.level}
-          phaseName={roadmap.current_phase ?? 'Foundations'}
-          weekNumber={roadmap.current_week ?? 1}
-          existingLessonId={existingLesson?.id ?? null}
-          userName={profile.full_name ?? 'Learner'}
-        />
-      </SectionContainer>
-    </div>
+    <LessonViewer
+      roadmapId={roadmap.id}
+      topic={roadmap.current_topic ?? roadmap.skill}
+      skill={roadmap.skill}
+      level={roadmap.level}
+      phaseName={roadmap.current_phase ?? 'Foundations'}
+      weekNumber={roadmap.current_week ?? 1}
+      existingLessonId={existingLesson?.id ?? null}
+      userName={profile.full_name ?? 'Learner'}
+      streakDays={progress?.streak_days ?? 0}
+      xpPoints={progress?.xp_points ?? 0}
+    />
   )
 }

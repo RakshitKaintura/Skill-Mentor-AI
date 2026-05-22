@@ -84,9 +84,11 @@ export default async function DashboardPage() {
     ? `?skill=${encodeURIComponent(roadmap.skill)}&level=${encodeURIComponent(roadmap.level)}&roadmap_id=${encodeURIComponent(roadmap.id)}`
     : ''
 
+  // Calculate overall progress based on completed topics
   const totalWeeks = Math.max(1, roadmap?.total_duration ?? roadmap?.total_weeks ?? 12)
-  const completedWeeks = Math.max(0, currentWeek - 1)
-  const weekProgress = Math.round((completedWeeks / totalWeeks) * 100)
+  const totalTopics = phases.reduce((acc, p) => acc + (p.topics?.length || 0), 0)
+  const completedTopics = Math.min(lessonsCompleted, Math.max(1, totalTopics))
+  const overallProgress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -222,11 +224,11 @@ export default async function DashboardPage() {
             <div className="mt-6">
               <div className="mb-2 flex justify-between text-sm text-[var(--color-app-text-secondary)]">
                 <span>Overall progress</span>
-                <span className="font-semibold text-[var(--color-app-primary)]">{weekProgress}%</span>
+                <span className="font-semibold text-[var(--color-app-primary)]">{overallProgress}%</span>
               </div>
               <div className="h-2 rounded-full bg-[var(--color-app-bg)]">
                 <div className="h-2 rounded-full bg-[var(--color-app-primary)] transition-all duration-700"
-                  style={{ width: `${weekProgress}%` }} />
+                  style={{ width: `${overallProgress}%` }} />
               </div>
             </div>
           </Card>
@@ -244,35 +246,58 @@ export default async function DashboardPage() {
               <Link href="/roadmap" className="text-sm text-[var(--color-app-primary)] hover:underline">Full View →</Link>
             </div>
             <div className="flex flex-col gap-3">
-              {phases.map((phase, i) => {
-                const isCurrent = phase.name === roadmap?.current_phase
-                const activeWeeks = phase.duration_weeks ?? phase.weeks ?? [0]
-                const startWk = activeWeeks[0]
-                const endWk = activeWeeks[activeWeeks.length - 1]
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
-                      phase.completed
-                        ? "border-[var(--color-app-primary)] bg-[var(--color-app-primary)] text-white"
-                        : isCurrent
-                        ? "border-[var(--color-app-primary)] bg-[#e8f0fe] text-[var(--color-app-primary)]"
-                        : "border-[var(--color-app-border)] bg-[var(--color-app-bg)] text-[var(--color-app-text-secondary)]"
-                    )}>
-                      {phase.completed ? '✓' : i + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{phase.name}</p>
-                        {isCurrent && (
-                          <span className="rounded bg-[#e8f0fe] px-2 py-0.5 text-xs font-semibold uppercase text-[var(--color-app-primary)]">NOW</span>
-                        )}
+              {(() => {
+                const currentPhaseIndex = phases.findIndex(p => p.name === roadmap?.current_phase)
+                const allDone = completedTopics >= totalTopics && totalTopics > 0
+
+                let accumulatedTopics = 0;
+
+                return phases.map((phase, i) => {
+                  const isCurrent = !allDone && i === currentPhaseIndex
+                  const isCompleted = allDone || (currentPhaseIndex !== -1 && i < currentPhaseIndex) || phase.completed
+
+                  const numTopicsInPhase = phase.topics?.length || 0
+                  const completedInThisPhase = Math.max(0, Math.min(completedTopics - accumulatedTopics, numTopicsInPhase))
+                  const phasePct = numTopicsInPhase > 0 ? Math.round((completedInThisPhase / numTopicsInPhase) * 100) : (isCompleted ? 100 : 0)
+                  
+                  accumulatedTopics += numTopicsInPhase
+
+                  const activeWeeks = phase.duration_weeks ?? phase.weeks ?? [0]
+                  const startWk = activeWeeks[0]
+                  const endWk = activeWeeks[activeWeeks.length - 1]
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
+                        isCompleted
+                          ? "border-[var(--color-app-primary)] bg-[var(--color-app-primary)] text-white"
+                          : isCurrent
+                          ? "border-[var(--color-app-primary)] bg-[#e8f0fe] text-[var(--color-app-primary)]"
+                          : "border-[var(--color-app-border)] bg-[var(--color-app-bg)] text-[var(--color-app-text-secondary)]"
+                      )}>
+                        {isCompleted ? '✓' : i + 1}
                       </div>
-                      <p className="text-xs text-[var(--color-app-text-secondary)]">Wk {startWk}–{endWk} · {phase.topics.length} topics</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-[var(--color-app-text-primary)]">{phase.name}</p>
+                          {isCurrent && (
+                            <span className="rounded bg-[#e8f0fe] px-2 py-0.5 text-xs font-semibold uppercase text-[var(--color-app-primary)]">NOW</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[var(--color-app-text-secondary)] flex items-center">
+                          Wk {startWk}{startWk !== endWk ? `–${endWk}` : ''} · {numTopicsInPhase} topics
+                          <span className={cn(
+                            "ml-2 font-medium",
+                            isCompleted ? "text-[#188038]" : (isCurrent ? "text-[var(--color-app-primary)]" : "")
+                          )}>
+                            · {phasePct}%
+                          </span>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              })()}
             </div>
           </Card>
 
@@ -319,9 +344,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { href: '/skills',                Icon: Layers,   label: 'My Skills',         tone: 'bg-[var(--color-app-surface-cool)]',     border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
             { href: `/project${week4Query}`,  Icon: Target,   label: 'Project Mentor',    tone: 'bg-[var(--color-app-surface-mint)]',     border: 'border-[#b7e1c3]', icon: 'text-[#188038]', hover: 'group-hover:text-[#188038]' },
             { href: `/interview${week4Query}`,Icon: Mic,      label: 'Mock Interview',    tone: 'bg-[var(--color-app-surface-cool)]',     border: 'border-[#b8cef7]', icon: 'text-[#1a73e8]', hover: 'group-hover:text-[#1a73e8]' },
             { href: `/career${week4Query}`,   Icon: Star,     label: 'Career Hub',        tone: 'bg-[var(--color-app-surface-warm)]',     border: 'border-[#f5d59a]', icon: 'text-[#f9ab00]', hover: 'group-hover:text-[#b06000]' },

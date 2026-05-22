@@ -9,17 +9,15 @@ import { useAnalytics } from '@/hooks/useAnalytics'
 import { useStreamingAI } from '@/hooks/useStreamingAI'
 import { LessonStepCard } from '@/components/lesson/LessonStepCard'
 import { DoubtPanel } from '@/components/lesson/DoubtPanel'
-import { VoiceOrb } from '@/components/voice/VoiceOrb'
-import { VoiceTranscript } from '@/components/voice/VoiceTranscript'
+import { VoiceLessonPanel } from '@/components/voice/VoiceLessonPanel'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
-import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 import { AgenticTerminal } from '@/components/ui/AgenticTerminal'
 import { ThoughtProcess } from '@/components/ui/ThoughtProcess'
 import { FocusTimer }    from '@/components/ui/FocusTimer'
 import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft, Mic, MessageCircle, FileText, Timer,
-  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, Volume2, Pause, Play, Send, MicOff
+  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight
 } from 'lucide-react'
 
 interface Props {
@@ -31,6 +29,8 @@ interface Props {
   weekNumber:       number
   existingLessonId: string | null
   userName:         string
+  streakDays?:      number
+  xpPoints?:        number
 }
 
 type PanelMode = 'lesson' | 'voice' | 'doubt' | 'focus'
@@ -42,7 +42,7 @@ interface DoubtResult {
 }
 
 export function LessonViewer({
-  roadmapId, topic, skill, level, phaseName, weekNumber, existingLessonId, userName
+  roadmapId, topic, skill, level, phaseName, weekNumber, existingLessonId, userName, streakDays, xpPoints
 }: Props) {
   const router = useRouter()
   const toast  = useToast()
@@ -51,6 +51,18 @@ export function LessonViewer({
   const { lesson, loading, error, generating, generateLesson, fetchLesson, completeLesson, generateNotes } = useLesson()
   const voice = useVoice({ topic, skill, level,
     lessonContext: lesson?.steps.map(s => `${s.title}: ${s.content}`).join('\n') })
+
+  const storageKey = `thought_process_${topic}_${skill}`.replace(/\s+/g, '_')
+  const [cachedReasoning, setCachedReasoning] = useState<{content: string, thoughts: string} | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(storageKey)
+      if (cached) {
+        try { setCachedReasoning(JSON.parse(cached)) } catch {}
+      }
+    }
+  }, [storageKey])
 
   // ── AI Thought Process Streaming ────────────────────────────
   // We stream a topic overview so the AI's reasoning is visible
@@ -63,6 +75,12 @@ export function LessonViewer({
     level,
     userId:    undefined, // populated after auth resolves
     roadmapId,
+    onComplete: (fullContent, fullThoughts) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, JSON.stringify({ content: fullContent, thoughts: fullThoughts }))
+      }
+      setCachedReasoning({ content: fullContent, thoughts: fullThoughts })
+    }
   })
 
   const [activeStep, setActiveStep]     = useState(0)
@@ -97,13 +115,7 @@ export function LessonViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-start the thought stream once the lesson content has loaded
-  useEffect(() => {
-    if (lesson && !streaming.isDone && !streaming.isThinking && !streaming.isStreaming) {
-      streaming.start()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lesson?.id])
+
 
   useEffect(() => {
     return () => {
@@ -274,7 +286,7 @@ export function LessonViewer({
   if (generating || loading) {
     return (
       <div className="min-h-screen page-tone-mint">
-        <DashboardNavbar userName={userName} />
+        <DashboardNavbar userName={userName} streakDays={streakDays} xpPoints={xpPoints} />
         <div className="flex flex-col items-center justify-center min-h-[80vh] px-5 w-full">
           {generating ? (
             <AgenticTerminal agentName="Lesson Teacher" />
@@ -298,7 +310,7 @@ export function LessonViewer({
   if (error || !lesson) {
     return (
       <div className="min-h-screen page-tone-mint">
-        <DashboardNavbar userName={userName} />
+        <DashboardNavbar userName={userName} streakDays={streakDays} xpPoints={xpPoints} />
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
           <div className="text-5xl mb-2">😔</div>
           <h2 className="font-display font-black text-2xl">Lesson generation failed</h2>
@@ -318,9 +330,9 @@ export function LessonViewer({
   return (
     <>
     <div className="min-h-screen page-tone-mint">
-      <DashboardNavbar userName={userName} />
+      <DashboardNavbar userName={userName} streakDays={streakDays} xpPoints={xpPoints} />
 
-      <div className="max-w-5xl mx-auto px-5 py-8">
+      <div className={`mx-auto py-8 transition-all duration-500 ${panel === 'voice' ? 'max-w-[1600px] px-6' : 'max-w-5xl px-5'}`}>
 
         {/* Breadcrumb + Actions */}
         <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
@@ -388,15 +400,15 @@ export function LessonViewer({
 
         {/* AI Thought Process Panel */}
         <ThoughtProcess
-          thoughts={streaming.thoughts}
-          content={streaming.content}
-          isThinking={streaming.isThinking}
-          isStreaming={streaming.isStreaming}
-          isDone={streaming.isDone}
+          thoughts={cachedReasoning ? cachedReasoning.thoughts : streaming.thoughts}
+          content={cachedReasoning ? cachedReasoning.content : streaming.content}
+          isThinking={cachedReasoning ? false : streaming.isThinking}
+          isStreaming={cachedReasoning ? false : streaming.isStreaming}
+          isDone={!!cachedReasoning || streaming.isDone}
           error={streaming.error}
           onStart={streaming.start}
           onAbort={streaming.abort}
-          showTrigger={!streaming.isThinking && !streaming.isStreaming && !streaming.isDone && !streaming.thoughts}
+          showTrigger={!cachedReasoning && !streaming.isThinking && !streaming.isStreaming && !streaming.isDone && !streaming.thoughts}
           triggerLabel={`Show AI reasoning for "${topic}"`}
           className="mb-6"
         />
@@ -503,164 +515,21 @@ export function LessonViewer({
           </div>
         )}
 
-        {/* VOICE PANEL */}
         {panel === 'voice' && (
-          <div className="max-w-xl mx-auto">
-            <div className="glass-card p-8 text-center mb-4"
-              style={{ borderColor: voice.state !== 'idle' ? 'rgba(79,255,160,0.2)' : 'var(--color-app-border)' }}>
-              <p className="text-sm mb-8" style={{ color: 'var(--color-app-text-secondary)' }}>
-                {voice.state === 'idle'
-                  ? `Start a voice session — AI will teach "${topic}" out loud. Interrupt anytime.`
-                  : 'Voice session active. Speak naturally — interrupt anytime.'}
-              </p>
-              <VoiceOrb state={voice.state} isMuted={voice.isMuted}
-                onStart={voice.start} onStop={voice.stop}
-                durationSeconds={voice.durationSeconds} />
-
-              {voice.state !== 'idle' && voice.state !== 'error' && (
-                <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    onClick={() => {
-                      if (voice.isPaused) {
-                        stopDoubtSpeech()
-                        voice.resume(getResumePrompt())
-                      } else {
-                        voice.pause()
-                      }
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all"
-                    style={{
-                      borderColor: voice.isPaused
-                        ? 'color-mix(in oklab, #188038 42%, var(--color-app-border))'
-                        : 'color-mix(in oklab, #b06000 38%, var(--color-app-border))',
-                      color: voice.isPaused ? '#188038' : '#b06000',
-                      background: voice.isPaused
-                        ? 'color-mix(in oklab, var(--color-app-surface-mint) 72%, var(--color-app-surface) 28%)'
-                        : 'color-mix(in oklab, var(--color-app-surface-warm) 72%, var(--color-app-surface) 28%)',
-                    }}
-                  >
-                    {voice.isPaused ? <><Play size={12} />Resume Lesson</> : <><Pause size={12} />Pause Lesson</>}
-                  </button>
-
-                  <button
-                    onClick={voice.toggleMute}
-                    className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border transition-all"
-                    style={{
-                      borderColor: voice.isMuted
-                        ? 'color-mix(in oklab, #188038 42%, var(--color-app-border))'
-                        : 'color-mix(in oklab, #5B8EFF 38%, var(--color-app-border))',
-                      color: voice.isMuted ? '#188038' : '#5B8EFF',
-                      background: voice.isMuted
-                        ? 'color-mix(in oklab, var(--color-app-surface-mint) 72%, var(--color-app-surface) 28%)'
-                        : 'color-mix(in oklab, var(--color-app-surface-cool) 72%, var(--color-app-surface) 28%)',
-                    }}
-                  >
-                    {voice.isMuted ? <><MicOff size={12} />Unmute</> : <><Mic size={12} />Mute</>}
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-5 text-left">
-                <p className="text-xs font-bold mb-2" style={{ color: 'var(--color-app-text-secondary)' }}>
-                  TYPE RESPONSE / QUESTION (Fallback)
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={voiceTextInput}
-                    onChange={(e) => setVoiceTextInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && sendTypedVoiceInput()}
-                    placeholder="Type if voice misses your input..."
-                    className="flex-1 px-4 py-2.5 text-sm rounded-sm"
-                    style={{ background: 'var(--color-app-surface)', borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-primary)' }}
-                  />
-                  <button
-                    onClick={sendTypedVoiceInput}
-                    disabled={!voiceTextInput.trim()}
-                    className="px-4 py-2.5 rounded-sm flex items-center gap-2 text-sm font-bold disabled:opacity-40 transition-opacity"
-                    style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}
-                  >
-                    <Send size={14} />
-                    Send
-                  </button>
-                </div>
-                <p className="mt-2 text-[11px]" style={{ color: 'var(--color-app-text-secondary)' }}>
-                  Works while voice is active and also resumes session automatically if it was paused.
-                </p>
-              </div>
-
-              {voice.error && <p className="mt-4 text-xs" style={{ color: '#FF6B6B' }}>{voice.error}</p>}
-            </div>
-
-            {voiceDoubtResult && (
-              <div className="glass-card p-5 mb-4 space-y-4">
-                <div>
-                  <p className="text-xs font-bold mb-2" style={{ color: 'var(--color-app-text-secondary)' }}>YOUR VOICE DOUBT</p>
-                  <p className="text-sm" style={{ color: 'var(--color-app-text-primary)' }}>{voiceDoubtQuestion}</p>
-                </div>
-                <div
-                  className="p-4 rounded-sm"
-                  style={{
-                    background: 'color-mix(in oklab, var(--color-app-surface-cool) 68%, var(--color-app-surface) 32%)',
-                    border: '1px solid color-mix(in oklab, var(--color-app-primary) 24%, var(--color-app-border))',
-                  }}
-                >
-                  <p className="text-xs font-bold mb-2" style={{ color: '#188038' }}>EXPLANATION</p>
-                  <MarkdownRenderer content={voiceDoubtResult.answer} />
-                </div>
-                <div
-                  className="p-4 rounded-sm"
-                  style={{
-                    background: 'color-mix(in oklab, var(--color-app-surface-warm) 68%, var(--color-app-surface) 32%)',
-                    border: '1px solid color-mix(in oklab, #f9ab00 40%, var(--color-app-border))',
-                  }}
-                >
-                  <p className="text-xs font-bold mb-2" style={{ color: 'color-mix(in oklab, var(--color-app-text-primary) 74%, #b06000)' }}>ANALOGY</p>
-                  <MarkdownRenderer content={voiceDoubtResult.analogy} />
-                </div>
-                <div className="flex justify-end">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => speakDoubtAnswer(voiceDoubtResult)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border"
-                      style={{ borderColor: '#5B8EFF', color: '#5B8EFF', background: 'rgba(91,142,255,0.08)' }}
-                    >
-                      <Play size={12} />Play Answer Audio
-                    </button>
-                    {speakingDoubt && (
-                      <button
-                        onClick={stopDoubtSpeech}
-                        className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs border"
-                        style={{ borderColor: '#FF6B6B', color: '#FF6B6B', background: 'rgba(255,107,107,0.08)' }}
-                      >
-                        <Pause size={12} />Stop Audio
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        stopDoubtSpeech()
-                        voice.resume(getResumePrompt())
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold"
-                      style={{ background: 'var(--color-app-primary)', color: '#ffffff' }}
-                    >
-                      <Play size={12} />Resume Voice Lesson
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {voice.transcript.length > 0 && (
-              <div className="glass-card overflow-hidden">
-                <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--color-app-border)' }}>
-                  <Volume2 size={13} style={{ color: 'var(--color-app-text-secondary)' }} />
-                  <span className="text-xs font-bold" style={{ color: 'var(--color-app-text-secondary)' }}>TRANSCRIPT</span>
-                </div>
-                <VoiceTranscript messages={voice.transcript} />
-              </div>
-            )}
-          </div>
+          <VoiceLessonPanel
+            topic={topic}
+            skill={skill}
+            voice={voice}
+            voiceTextInput={voiceTextInput}
+            setVoiceTextInput={setVoiceTextInput}
+            sendTypedVoiceInput={sendTypedVoiceInput}
+            voiceDoubtResult={voiceDoubtResult}
+            voiceDoubtQuestion={voiceDoubtQuestion}
+            speakDoubtAnswer={speakDoubtAnswer}
+            speakingDoubt={speakingDoubt}
+            stopDoubtSpeech={stopDoubtSpeech}
+            getResumePrompt={getResumePrompt}
+          />
         )}
 
         {/* DOUBT PANEL */}

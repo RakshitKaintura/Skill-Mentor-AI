@@ -1,18 +1,18 @@
 """
 Notes Service — Generates branded PDF notes for lessons and weekly report cards.
-Uses ReportLab with a modern dark theme for 2026 brand standards.
+Uses ReportLab with a clean light theme for maximum readability.
 """
 import io
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List, cast
 
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.colors import HexColor
-from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_CENTER
-from reportlab.platypus import (
+from reportlab.lib.pagesizes import A4  # type: ignore[import-untyped]
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # type: ignore[import-untyped]
+from reportlab.lib.colors import HexColor, black, white  # type: ignore[import-untyped]
+from reportlab.lib.units import cm  # type: ignore[import-untyped]
+from reportlab.lib.enums import TA_CENTER, TA_LEFT  # type: ignore[import-untyped]
+from reportlab.platypus import (  # type: ignore[import-untyped]
     SimpleDocTemplate, Paragraph, Spacer,
     Table, TableStyle, HRFlowable, KeepTogether,
 )
@@ -22,67 +22,96 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# --- Modern Dark Theme Palette (2026 Brand Standards) ---
-C_BG      = HexColor("#080B14")  # Deep Midnight
-C_SURF    = HexColor("#0E1420")  # Surface Blue
-C_BORDER  = HexColor("#1E2A42")  # Subtle Divider
-C_ACCENT  = HexColor("#4FFFA0")  # SkillMentor Neon Green
-C_BLUE    = HexColor("#5B8EFF")
-C_RED     = HexColor("#FF6B6B")
-C_YELLOW  = HexColor("#FFD166")
-C_TEXT_H  = HexColor("#E8EDF8")  # High Emphasis Text
-C_TEXT_B  = HexColor("#C4CFEA")  # Body Text
-C_MUTED   = HexColor("#6B7A99")
-C_CODE_BG = HexColor("#0A1020")  # Console Background
+# --- Clean Light Theme Palette ---
+C_WHITE     = HexColor("#FFFFFF")
+C_PAGE_BG   = HexColor("#FFFFFF")
+C_BORDER    = HexColor("#E0E0E0")   # Light divider
+C_ACCENT    = HexColor("#7C3AED")   # Purple accent (brand)
+C_BLUE      = HexColor("#2563EB")   # Section headers
+C_GREEN     = HexColor("#16A34A")   # Strengths
+C_RED       = HexColor("#DC2626")   # Weaknesses / pitfalls
+C_YELLOW    = HexColor("#D97706")   # Warnings / analogies
+C_TEXT_H    = HexColor("#000000")   # Black heading — fully visible
+C_TEXT_B    = HexColor("#000000")   # Black body text
+C_MUTED     = HexColor("#6B7280")   # Meta / timestamps
+C_CODE_BG   = HexColor("#F3F4F6")   # Light grey code background
+C_CODE_TEXT = HexColor("#1F2937")   # Dark code text
+C_TAG_BG    = HexColor("#EDE9FE")   # Light purple tag badge
+C_TAG_TEXT  = HexColor("#5B21B6")   # Dark purple tag text
 
-# Step-specific accent colors for visual hierarchy
+# Step-specific labels
 THEME_MAP = {
-    "intro":     {"color": C_ACCENT, "icon": "01 — CONTEXT"},
+    "intro":     {"color": C_BLUE,   "icon": "01 — CONTEXT"},
     "analogy":   {"color": C_YELLOW, "icon": "02 — ANALOGY"},
-    "code_demo": {"color": C_BLUE, "icon": "03 — IMPLEMENTATION"},
-    "try_it":    {"color": HexColor("#C77DFF"), "icon": "04 — PRACTICAL"},
-    "mistakes":  {"color": HexColor("#FF8C42"), "icon": "05 — PITFALLS"},
-    "summary":   {"color": C_ACCENT, "icon": "06 — REVIEW"},
+    "code_demo": {"color": C_ACCENT, "icon": "03 — IMPLEMENTATION"},
+    "try_it":    {"color": C_GREEN,  "icon": "04 — PRACTICAL"},
+    "mistakes":  {"color": C_RED,    "icon": "05 — PITFALLS"},
+    "summary":   {"color": C_BLUE,   "icon": "06 — REVIEW"},
 }
 
 def _get_styles():
-    """Defines a reusable stylesheet for the branded PDFs."""
+    """Defines a clean, readable light-theme stylesheet for PDFs."""
     s = getSampleStyleSheet()
-    
-    # Custom Brand Styles
-    s.add(ParagraphStyle("Brand", fontSize=10, fontName="Helvetica-Bold", textColor=C_ACCENT))
-    s.add(ParagraphStyle("H1", fontSize=24, fontName="Helvetica-Bold", textColor=C_TEXT_H, leading=28))
-    s.add(ParagraphStyle("Meta", fontSize=9, fontName="Helvetica", textColor=C_MUTED, spaceAfter=12))
-    s.add(ParagraphStyle("Body", fontSize=10, fontName="Helvetica", textColor=C_TEXT_B, leading=16, spaceAfter=8))
-    
-    s.add(ParagraphStyle("SectionHdr", fontName="Helvetica-Bold", fontSize=13, textColor=C_BLUE, spaceAfter=6, spaceBefore=14))
-    
+
     s.add(ParagraphStyle(
-        "CodeBlock", 
-        fontSize=8.5, 
-        fontName="Courier", 
-        textColor=HexColor("#A8FF78"),
-        backColor=C_CODE_BG, 
-        borderPadding=(10, 10, 10, 10), 
-        leading=12, 
-        spaceBefore=6, 
-        spaceAfter=12
+        "Brand", fontSize=9, fontName="Helvetica-Bold",
+        textColor=C_MUTED, spaceBefore=0, spaceAfter=4,
+        letterSpacing=1.5,
     ))
-    
     s.add(ParagraphStyle(
-        "Callout", 
-        fontSize=10, 
-        fontName="Helvetica-BoldOblique", 
-        textColor=C_ACCENT,
-        backColor=HexColor("#061A10"), 
-        borderPadding=12, 
-        leading=15, 
-        borderRadius=4
+        "H1", fontSize=26, fontName="Helvetica-Bold",
+        textColor=C_TEXT_H, leading=32, spaceAfter=4,
+    ))
+    s.add(ParagraphStyle(
+        "Meta", fontSize=9, fontName="Helvetica",
+        textColor=C_MUTED, spaceAfter=10,
+    ))
+    s.add(ParagraphStyle(
+        "Body", fontSize=10.5, fontName="Helvetica",
+        textColor=C_TEXT_B, leading=17, spaceAfter=8,
+    ))
+    s.add(ParagraphStyle(
+        "SectionLabel", fontName="Helvetica-Bold", fontSize=8.5,
+        textColor=C_MUTED, spaceBefore=14, spaceAfter=2, letterSpacing=1.2,
+    ))
+    s.add(ParagraphStyle(
+        "SectionHdr", fontName="Helvetica-Bold", fontSize=14,
+        textColor=C_TEXT_H, spaceAfter=6, spaceBefore=4,
+    ))
+    s.add(ParagraphStyle(
+        "SubHdr", fontName="Helvetica-Bold", fontSize=11,
+        textColor=C_TEXT_H, spaceAfter=4, spaceBefore=8,
+    ))
+    s.add(ParagraphStyle(
+        "CodeBlock",
+        fontSize=9,
+        fontName="Courier",
+        textColor=C_CODE_TEXT,
+        backColor=C_CODE_BG,
+        borderPadding=(10, 12, 10, 12),  # type: ignore[arg-type]
+        leading=14,
+        spaceBefore=6,
+        spaceAfter=12,
+        borderRadius=4,
+    ))
+    s.add(ParagraphStyle(
+        "Callout",
+        fontSize=10.5,
+        fontName="Helvetica-BoldOblique",
+        textColor=HexColor("#5B21B6"),
+        backColor=HexColor("#EDE9FE"),
+        borderPadding=(10, 12, 10, 12),  # type: ignore[arg-type]
+        leading=16,
+        spaceAfter=12,
+        borderRadius=4,
+    ))
+    s.add(ParagraphStyle(
+        "GradeLarge", fontName="Helvetica-Bold", fontSize=64,
+        alignment=TA_CENTER, spaceAfter=4,
     ))
 
-    s.add(ParagraphStyle("GradeLarge", fontName="Helvetica-Bold", fontSize=64, alignment=TA_CENTER, spaceAfter=4))
-    
     return s
+
 
 def _sanitize_xml(text: str) -> str:
     """Prevents ReportLab XML parsing errors by escaping special characters."""
@@ -149,6 +178,7 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
         raise FileNotFoundError(f"Lesson {lesson_id} not found.")
     
     lesson = response.data
+    lesson: Dict[str, Any] = cast(Dict[str, Any], lesson)
     styles = _get_styles()
     buffer = io.BytesIO()
     
@@ -158,7 +188,7 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
         topMargin=2*cm, bottomMargin=2*cm,
     )
     
-    elements = []
+    elements: List[Any] = []
     elements.append(Paragraph("SKILLMENTOR AI • LESSON NOTES", styles["Brand"]))
     elements.append(Paragraph(_sanitize_xml(lesson.get("topic", "Unit Study")), styles["H1"]))
     elements.append(Paragraph(f"Skill: {lesson.get('skill')} | Generated: {datetime.now().strftime('%Y-%m-%d')}", styles["Meta"]))
@@ -172,7 +202,7 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
         stype = step.get("type", "intro")
         theme = THEME_MAP.get(stype, {"color": C_TEXT_B, "icon": stype.upper()})
         
-        step_group = []
+        step_group: List[Any] = []
         type_label = f"<font color='{theme['color']}'>{theme['icon']}</font>"
         step_group.append(Paragraph(type_label, styles["Meta"]))
         step_group.append(Paragraph(_sanitize_xml(step.get("title", "")), styles["Brand"]))
@@ -199,6 +229,11 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
     )
 
     download_url = _build_download_url(supabase, bucket_name, storage_path)
+    if "?" in download_url:
+        download_url += f"&t={int(datetime.now().timestamp())}"
+    else:
+        download_url += f"?t={int(datetime.now().timestamp())}"
+
     supabase.table("lessons").update({"pdf_notes_url": download_url}).eq("id", lesson_id).execute()
     return download_url
 
@@ -219,7 +254,7 @@ async def generate_report_pdf(
         topMargin=2*cm, bottomMargin=2*cm,
     )
 
-    elements = []
+    elements: List[Any] = []
     elements.append(Paragraph("SKILLMENTOR AI • WEEKLY PROGRESS", styles["Brand"]))
     elements.append(Paragraph(f"Week {week_number} Report Card", styles["H1"]))
     elements.append(Paragraph(f"Skill Mastery: {skill} | {datetime.now().strftime('%B %d, %Y')}", styles["Meta"]))
@@ -244,11 +279,11 @@ async def generate_report_pdf(
     ]
     tbl = Table(data, colWidths=[6*cm, 10*cm])
     tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), C_SURF),
+        ("BACKGROUND", (0,0), (-1,0), C_CODE_BG),
         ("TEXTCOLOR", (0,0), (-1,0), C_ACCENT),
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
         ("GRID", (0,0), (-1,-1), 0.5, C_BORDER),
-        ("BACKGROUND", (0,1), (-1,-1), C_BG),
+        ("BACKGROUND", (0,1), (-1,-1), C_PAGE_BG),
         ("TEXTCOLOR", (0,1), (-1,-1), C_TEXT_B),
         ("FONTSIZE", (0,0), (-1,-1), 10),
         ("TOPPADDING", (0,0), (-1,-1), 8),

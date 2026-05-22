@@ -12,6 +12,8 @@ import {
   LogOut, Menu, X, Flame, Star, Settings, Shield, BookOpen
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePomodoro } from '@/hooks/usePomodoro'
+import { Timer } from 'lucide-react'
 
 interface Props {
   userName?: string
@@ -28,6 +30,26 @@ const LINKS = [
   { href: '/achievements', label: 'Achievements', Icon: Trophy },
   { href: '/admin', label: 'Admin', Icon: Shield },
 ]
+
+function FocusModeToggle() {
+  const pomodoro = usePomodoro()
+  const isActive = pomodoro.phase !== 'idle'
+
+  return (
+    <div className="relative">
+      <button 
+        onClick={() => {
+          pomodoro.toggleWidget()
+          if (pomodoro.isWidgetOpen && pomodoro.isWidgetMinimized) pomodoro.toggleMinimize(false)
+        }}
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-app-border)] bg-[var(--color-app-bg)] text-[var(--color-app-text-secondary)] transition-colors hover:text-[var(--color-app-text-primary)] hover:bg-[var(--color-app-surface)]"
+        title="Focus Mode"
+      >
+        <Timer size={16} className={isActive ? 'text-[var(--color-app-primary)]' : ''} />
+      </button>
+    </div>
+  )
+}
 
 export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Props) {
   const router = useRouter()
@@ -129,6 +151,7 @@ export function DashboardNavbar({ userName, streakDays = 0, xpPoints = 0 }: Prop
 
         {/* User Stats & Profile */}
         <div className="flex items-center gap-2">
+          <FocusModeToggle />
           {currentUserId && <NotificationBell userId={currentUserId} />}
 
           <ThemeToggle />

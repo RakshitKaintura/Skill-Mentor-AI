@@ -54,17 +54,29 @@ export default function DailyChallengeDetailPage() {
   const [xpEarned, setXpEarned] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
+  const [validationFeedback, setValidationFeedback] = useState<string | null>(null)
+
   const handleSubmit = async () => {
     if (!challenge || !user) return
     const challengeId = challenge.challenge_id || challenge.id
     if (!challengeId) return
 
     setSubmitting(true)
+    setValidationFeedback(null)
+    
     try {
+      const payload = {
+        challenge_id: challengeId,
+        user_id: user.id,
+        answers: challenge.type === 'quiz' || challenge.type === 'review' ? answers : undefined,
+        code: challenge.type === 'code' ? codeInput : undefined,
+        theory: challenge.type === 'theory' ? theoryInput : undefined
+      }
+
       const res = await fetch(`${API}/api/daily/challenge/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challenge_id: challengeId, user_id: user.id }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -72,6 +84,14 @@ export default function DailyChallengeDetailPage() {
       }
 
       const data = await res.json()
+      
+      // If validation failed, the backend returns { success: true, completed: false, feedback: "..." }
+      if (data.success && data.completed === false) {
+        setValidationFeedback(data.feedback || "Your answer was incorrect. Please try again.")
+        setSubmitting(false)
+        return
+      }
+
       if (data.success || data.already_completed) {
         setXpEarned(data.xp_awarded ? data.xp_awarded : 0)
         setSubmitted(true)
@@ -183,6 +203,12 @@ export default function DailyChallengeDetailPage() {
               </div>
             ) : (
               <div className="space-y-6">
+                {validationFeedback && (
+                  <div className="rounded-lg border border-[#FF5A5F]/40 bg-[#FF5A5F]/10 p-4 text-sm text-[#FF5A5F]">
+                    <div className="font-semibold mb-1">Needs Revision</div>
+                    {validationFeedback}
+                  </div>
+                )}
                 {challenge.type === 'quiz' && quizQuestions.length > 0 && (
                   <div className="space-y-4">
                     {quizQuestions.map((q, qi) => (

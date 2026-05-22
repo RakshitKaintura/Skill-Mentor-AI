@@ -31,10 +31,13 @@ async def get_or_generate_daily_challenge(
     # Check if already generated today
     existing = supabase.table("daily_challenges").select("*") \
         .eq("user_id", user_id).eq("challenge_date", today).execute()
-    if existing.data and existing.data[0].get("title") != "Generating...":
-        challenge = dict(existing.data[0])
-        challenge["challenge_id"] = challenge.get("id")
-        return challenge
+    
+    existing_data = existing.data
+    if existing_data and isinstance(existing_data, list) and len(existing_data) > 0 and isinstance(existing_data[0], dict):
+        if existing_data[0].get("title") != "Generating...":
+            challenge = dict(existing_data[0])
+            challenge["challenge_id"] = challenge.get("id")
+            return challenge
 
     # Gather context
     roadmap  = supabase.table("roadmaps").select("current_topic, level, current_week") \
@@ -42,11 +45,14 @@ async def get_or_generate_daily_challenge(
     progress = supabase.table("user_progress").select("weak_topics, streak_days, xp_points") \
         .eq("user_id", user_id).single().execute()
 
-    topic   = roadmap.data.get("current_topic", skill) if roadmap.data else skill
-    level   = roadmap.data.get("level", "beginner")    if roadmap.data else "beginner"
-    week    = roadmap.data.get("current_week", 1)      if roadmap.data else 1
-    weak    = (progress.data or {}).get("weak_topics", [])
-    streak  = (progress.data or {}).get("streak_days", 0)
+    r_data = roadmap.data if isinstance(roadmap.data, dict) else {}
+    p_data = progress.data if isinstance(progress.data, dict) else {}
+
+    topic   = r_data.get("current_topic", skill) if r_data else skill
+    level   = r_data.get("level", "beginner")    if r_data else "beginner"
+    week    = r_data.get("current_week", 1)      if r_data else 1
+    weak    = p_data.get("weak_topics", [])
+    streak  = p_data.get("streak_days", 0)
 
     # Pick challenge type based on day of week (variety)
     day_num = date.today().weekday()  # 0=Mon … 6=Sun
@@ -93,7 +99,7 @@ Return ONLY this JSON:
 }}"""
 
     resp = model.generate_content(prompt)
-    raw = resp.text.strip()
+    raw = (resp.text or "").strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -113,12 +119,15 @@ Return ONLY this JSON:
         "xp_awarded": 0,
     }
 
-    if existing.data:
-        supabase.table("daily_challenges").update(upsert_data).eq("id", existing.data[0]["id"]).execute()
-        challenge_data["challenge_id"] = existing.data[0]["id"]
+    if existing_data and isinstance(existing_data, list) and len(existing_data) > 0 and isinstance(existing_data[0], dict):
+        challenge_id = str(existing_data[0].get("id", ""))
+        supabase.table("daily_challenges").update(upsert_data).eq("id", challenge_id).execute()
+        challenge_data["challenge_id"] = challenge_id
     else:
         row = supabase.table("daily_challenges").insert(upsert_data).execute()
-        challenge_data["challenge_id"] = row.data[0]["id"]
+        row_data = row.data
+        if row_data and isinstance(row_data, list) and len(row_data) > 0 and isinstance(row_data[0], dict):
+            challenge_data["challenge_id"] = str(row_data[0].get("id", ""))
 
     return challenge_data
 
@@ -126,21 +135,92 @@ Return ONLY this JSON:
 async def complete_daily_challenge(
     challenge_id: str,
     user_id: str,
+    submission: dict | None = None
 ) -> dict:
-    """Mark daily challenge as complete and award XP."""
+    """Mark daily challenge as complete and award XP, after validating submission."""
     supabase = get_supabase()
-    ch = supabase.table("daily_challenges").select("xp_awarded, completed") \
+    ch = supabase.table("daily_challenges").select("xp_awarded, completed, type, content") \
         .eq("id", challenge_id).single().execute()
-    if not ch.data or ch.data.get("completed"):
+    
+    ch_data = ch.data if isinstance(ch.data, dict) else {}
+    if not ch_data or ch_data.get("completed"):
         return {"already_completed": True}
 
-    # Award XP
-    xp = ch.data.get("xp_awarded", 50) or 50
-    # Get the challenge content to determine XP
-    full_ch = supabase.table("daily_challenges").select("content").eq("id", challenge_id).single().execute()
-    if full_ch.data:
-        xp_reward = full_ch.data.get("content", {}).get("xp_reward", 50) if isinstance(full_ch.data.get("content"), dict) else 50
-        xp = xp_reward
+    challenge_type = ch_data.get("type")
+    content = ch_data.get("content", {})
+    xp = ch_data.get("xp_awarded", 50) or 50
+    if isinstance(content, dict):
+        xp = content.get("xp_reward", 50)
+
+    # Validation Logic
+    if submission:
+        is_valid = True
+        feedback = ""
+
+        if challenge_type == "quiz":
+            # For quiz, we check if all questions have an answer (basic validation)
+            # A strict validation would check against the correct answer, but our DB schema 
+            # currently doesn't store the correct answer explicitly in 'content.questions'. 
+            # We will use Gemini to grade it based on the questions.
+            model = get_gemini_model("You are a helpful tutor grading a quiz. Grade with MEDIUM strictness. Return JSON with 'pass' (boolean) and 'feedback' (string).")
+            prompt = f"Quiz Questions: {json.dumps(content.get('questions', []))}\nUser Answers: {json.dumps(submission.get('answers', {}))}\nGrade this submission."
+            resp = model.generate_content(prompt)
+            try:
+                raw = (resp.text or "").strip()
+                if raw.startswith("```"): raw = raw.split("```")[1]
+                if raw.startswith("json"): raw = raw[4:]
+                res = json.loads(raw.strip())
+                is_valid = res.get("pass", False)
+                feedback = res.get("feedback", "Your answer was incorrect.")
+            except Exception as e:
+                logger.error(f"Failed to grade quiz: {e}")
+                is_valid = False
+                feedback = "Could not validate your quiz answers."
+
+        elif challenge_type == "code":
+            user_code = submission.get("code", "")
+            if not user_code or len(user_code.strip()) < 5:
+                is_valid = False
+                feedback = "Please write a valid code solution."
+            else:
+                model = get_gemini_model("You are a senior developer grading a coding challenge. Grade with MEDIUM strictness. The code should generally solve the problem, even if it's not perfect. Check for glaring errors. Return JSON with 'pass' (boolean) and 'feedback' (string).")
+                prompt = f"Task: {content.get('task_description')}\nUser Code:\n{user_code}\nDoes this code adequately solve the task?"
+                resp = model.generate_content(prompt)
+                try:
+                    raw = (resp.text or "").strip()
+                    if raw.startswith("```"): raw = raw.split("```")[1]
+                    if raw.startswith("json"): raw = raw[4:]
+                    res = json.loads(raw.strip())
+                    is_valid = res.get("pass", False)
+                    feedback = res.get("feedback", "Your code solution was incorrect.")
+                except Exception as e:
+                    logger.error(f"Failed to grade code: {e}")
+                    is_valid = False
+                    feedback = "Could not validate your code."
+
+        elif challenge_type == "theory" or challenge_type == "review":
+            user_text = submission.get("theory") or json.dumps(submission.get("answers", {}))
+            if not user_text or len(user_text.strip()) < 10:
+                is_valid = False
+                feedback = "Please provide a more detailed explanation."
+            else:
+                model = get_gemini_model("You are a strict but fair tutor grading a theory explanation. Grade with MEDIUM strictness. The student should show basic understanding. Return JSON with 'pass' (boolean) and 'feedback' (string).")
+                prompt = f"Topic/Prompt: {content.get('explain_prompt') or content.get('topics_to_review')}\nUser Explanation:\n{user_text}\nIs this explanation acceptable?"
+                resp = model.generate_content(prompt)
+                try:
+                    raw = (resp.text or "").strip()
+                    if raw.startswith("```"): raw = raw.split("```")[1]
+                    if raw.startswith("json"): raw = raw[4:]
+                    res = json.loads(raw.strip())
+                    is_valid = res.get("pass", False)
+                    feedback = res.get("feedback", "Your explanation was inadequate.")
+                except Exception as e:
+                    logger.error(f"Failed to grade theory: {e}")
+                    is_valid = False
+                    feedback = "Could not validate your explanation."
+
+        if not is_valid:
+            return {"completed": False, "feedback": feedback}
 
     from datetime import datetime, timezone
     supabase.table("daily_challenges").update({
