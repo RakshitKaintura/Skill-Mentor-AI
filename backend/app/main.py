@@ -1,7 +1,3 @@
-"""
-SkillMentor AI — FastAPI v4.0.0 (The Complete Agentic Suite)
-Final backend orchestration for all 8 AI Agents.
-"""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

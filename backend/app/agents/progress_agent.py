@@ -1,7 +1,4 @@
-"""
-Agent 6 — Progress Tracker
-Analyzes multi-dimensional student performance and generates weekly AI report cards.
-"""
+
 import json
 import logging
 from datetime import datetime, timezone, timedelta

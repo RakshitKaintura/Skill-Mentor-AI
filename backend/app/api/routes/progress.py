@@ -1,7 +1,4 @@
-"""
-Progress Tracker API Routes — Agent 6
-Handles weekly report card generation, spaced repetition tracking, and leaderboard stats.
-"""
+
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query

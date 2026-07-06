@@ -1,7 +1,4 @@
-"""
-Agent 3 — Code Playground Coach
-Generates coding challenges, provides real-time hints, and evaluates submissions.
-"""
+
 import json
 import logging
 from datetime import datetime, timezone

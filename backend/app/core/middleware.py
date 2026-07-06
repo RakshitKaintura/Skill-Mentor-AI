@@ -1,26 +1,4 @@
-"""
-SkillMentor AI — ASGI Middleware
-=================================
-Two middlewares registered in main.py:
-
-1. CorrelationIDMiddleware
-   - Reads X-Request-ID from incoming request headers (or generates uuid4)
-   - Stores it in a ContextVar so it is accessible anywhere in the request
-     lifecycle via get_request_id()
-   - Echoes it back in the response X-Request-ID header
-
-2. GlobalExceptionHandler
-   - Catches ALL unhandled exceptions at the ASGI boundary
-   - Formats them into the structured ErrorResponse schema
-   - Sanitises internal error details in production
-   - Logs structured error lines with trace_id, path, method, duration_ms
-
-Registration order in main.py (outermost middleware added LAST):
-    app.add_middleware(GlobalExceptionHandler)   ← catches everything
-    app.add_middleware(CorrelationIDMiddleware)   ← injects trace ID first
-"""
 from __future__ import annotations
-
 import logging
 import time
 import uuid
@@ -87,16 +65,6 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
 # ── 2. Global Exception Handler ───────────────────────────────
 
 class GlobalExceptionHandler(BaseHTTPMiddleware):
-    """
-    Catches all unhandled exceptions at the ASGI boundary and converts
-    them into structured JSON error responses.
-
-    Priority order:
-      1. SkillMentorError subclasses  → use their declared http_status / error_code
-      2. RequestValidationError        → 422 VALIDATION_ERROR (Pydantic schema failures)
-      3. HTTPException                 → preserve status code, wrap in ErrorResponse
-      4. Everything else               → 500 INTERNAL_ERROR (message scrubbed in prod)
-    """
 
     def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)

@@ -1,21 +1,4 @@
-"""
-Agent Memory Service — Rolling Summary Buffer with Context Windowing
 
-Architecture:
-  - Conversations are stored turn-by-turn in the `conversation_history` Supabase table.
-  - Before each LLM call the history is fetched, token-counted with tiktoken, and
-    compressed if it exceeds TOKEN_HARD_LIMIT.
-  - Compression: oldest messages are summarized into a single [Context Summary] block
-    via the LLM router (one cheap, small call), then re-inserted at the head of
-    the window. This "rolling summary" approach keeps context relevant indefinitely
-    without blowing up the prompt token count.
-  - The post-session summary block (user_memory table) is preserved as a separate,
-    longer-lived store for personalization across different days/skills.
-
-Supabase tables used:
-  - conversation_history (user_id, session_id, role, content, token_count, created_at)
-  - user_memory          (user_id, session_summary, topics, created_at)
-"""
 import logging
 from typing import Optional
 from datetime import datetime, timezone

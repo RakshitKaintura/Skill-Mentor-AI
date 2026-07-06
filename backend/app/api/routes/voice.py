@@ -1,7 +1,4 @@
-"""
-Voice API Routes — Real-time Pedagogical Interaction
-Orchestrates a stateful WebSocket session between the student and Gemini 3.1 Flash Lite Preview.
-"""
+
 import json
 import asyncio
 from typing import Dict, Any

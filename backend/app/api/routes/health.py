@@ -1,14 +1,4 @@
-"""
-SkillMentor AI — Health Check Route
-=====================================
-Runs all dependency checks in parallel via asyncio.gather and returns
-a detailed HealthResponse documenting the status of every sub-system.
 
-Status levels:
-  "operational" — all checks pass
-  "degraded"    — Gemini or Storage fail but Supabase is OK
-  "down"        — Supabase is unavailable (platform non-functional)
-"""
 import asyncio
 import logging
 import time

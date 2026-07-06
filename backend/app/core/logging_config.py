@@ -1,12 +1,3 @@
-"""
-SkillMentor AI — Logging Configuration
-=======================================
-Call setup_logging() once during application startup (in main.py).
-- Development: human-readable coloured text via basicConfig
-- Production:  JSON-structured lines for log aggregators (Datadog, CloudWatch, etc.)
-
-No third-party library required — uses stdlib logging only.
-"""
 from __future__ import annotations
 
 import json
@@ -22,11 +13,7 @@ else:
 # ── JSON formatter ────────────────────────────────────────────
 
 class JsonFormatter(logging.Formatter):
-    """
-    Formats each log record as a single JSON line containing:
-    timestamp, level, logger name, message, and any 'extra' fields
-    (e.g. trace_id, duration_ms, path) attached at the call site.
-    """
+   
     _RESERVED = frozenset({
         "name", "msg", "args", "levelname", "levelno", "pathname",
         "filename", "module", "exc_info", "exc_text", "stack_info",
@@ -54,7 +41,7 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
-# ── Plain-text formatter (dev) ────────────────────────────────
+# ── Plain-text formatter (dev)
 
 class DevFormatter(logging.Formatter):
     """Colour-coded plain-text formatter for local development."""
@@ -94,11 +81,7 @@ class DevFormatter(logging.Formatter):
 # ── Public setup function ─────────────────────────────────────
 
 def setup_logging(app_env: str = "development") -> None:
-    """
-    Configure the root logger once at application startup.
-    Call this before creating the FastAPI app so all subsequent
-    loggers (uvicorn, fastapi, app.*) inherit the configuration.
-    """
+
     is_production = app_env == "production"
     formatter     = JsonFormatter() if is_production else DevFormatter()
     level         = logging.INFO if is_production else logging.DEBUG

@@ -1,7 +1,3 @@
-"""
-Agent 8 — Career Prep Agent
-Mock interviews, Resume/ATS optimization, and multi-metric Job Readiness Assessment.
-"""
 import json
 import logging
 from datetime import datetime, timezone

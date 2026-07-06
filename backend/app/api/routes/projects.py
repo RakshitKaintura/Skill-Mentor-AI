@@ -1,7 +1,4 @@
-"""
-Project Mentor API Routes — Agent 7
-Handles project assignment, senior-level code reviews, and architectural guidance.
-"""
+
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query

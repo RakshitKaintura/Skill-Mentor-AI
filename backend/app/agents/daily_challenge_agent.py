@@ -1,7 +1,4 @@
-"""
-Daily Challenge Agent — generates a fresh personalized daily challenge
-based on student's current topic, weak areas, and learning streak.
-"""
+
 import json
 import logging
 from datetime import date

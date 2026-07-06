@@ -1,12 +1,4 @@
-"""
-Stream API Routes — SkillMentor AI
-Exposes Server-Sent Events (SSE) endpoints that let the frontend
-subscribe to real-time Gemini streaming including:
-  - AI thought/reasoning chunks (ThinkingConfig output)
-  - Final answer text chunks
 
-This powers the "AI Thought Process" visualizer in the lesson UI.
-"""
 import json
 from typing import Optional
 

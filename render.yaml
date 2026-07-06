@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: skill-mentor-ai-backend
+    env: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEYS
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: GEMINI_EMBED_MODEL
+        value: text-embedding-004
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: ADMIN_API_KEY
+        sync: false
+      - key: ADMIN_ALLOWED_EMAILS
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JUDGE0_API_URL
+        value: https://ce.judge0.com
+      - key: JUDGE0_API_KEY
+        sync: false

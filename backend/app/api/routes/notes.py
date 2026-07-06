@@ -1,12 +1,4 @@
-"""
-Notes API Routes — Smart Notes System with AI Summarization
-Endpoints:
-  GET    /api/notes              — list notes (filterable by lesson_id, skill, search)
-  POST   /api/notes              — create a note
-  PATCH  /api/notes/{note_id}   — update content/tags
-  DELETE /api/notes/{note_id}   — delete a note
-  POST   /api/notes/summarize   — AI-summarize a list of notes
-"""
+
 import logging
 from typing import Optional
 

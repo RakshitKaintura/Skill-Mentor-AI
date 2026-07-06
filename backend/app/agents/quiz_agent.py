@@ -1,7 +1,4 @@
-"""
-Agent 4 — Quiz & Examiner
-Generates adaptive quizzes, evaluates answers, and provides pedagogical feedback.
-"""
+
 import json
 import logging
 from datetime import datetime, timezone

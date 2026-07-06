@@ -1,7 +1,4 @@
-"""
-Quiz & Examiner API Routes — Agent 4
-Manages adaptive quiz generation, submission evaluation, and student performance tracking.
-"""
+
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query

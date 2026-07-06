@@ -1,8 +1,4 @@
-"""
-Lesson API Routes for SkillMentor AI
-- Handles generation, doubt solving, progress tracking, and PDF notes.
-- Integrated with Google GenAI 2.0 Flash for high-speed tutoring.
-"""
+
 import json
 
 from fastapi import APIRouter, HTTPException, Query

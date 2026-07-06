@@ -1,14 +1,4 @@
-"""
-Doubt Solver Agent — with Rolling Context Window Memory
 
-Pipeline per request:
-  1. Fetch long-term user memory (cross-session personalization).
-  2. Build a token-counted, compressed context window for this session.
-  3. Fetch RAG chunks for grounding.
-  4. Generate a guided Socratic response via the LLM router.
-  5. Persist the new turn (user + assistant) to conversation history.
-  6. Update long-term memory asynchronously (fire-and-forget).
-"""
 import json
 import re
 import logging

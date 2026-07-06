@@ -1,18 +1,4 @@
-"""
-SkillMentor AI — Custom Exception Hierarchy
-============================================
-Domain-specific exceptions that map to precise HTTP status codes
-without coupling business logic directly to FastAPI/HTTP concerns.
-
-Usage in agents:
-    from app.core.exceptions import AgentError, ResourceNotFoundError
-    raise AgentError("Gemini returned empty response after 3 retries")
-
-The GlobalExceptionHandler in middleware.py catches all of these
-and serialises them into the structured ErrorResponse schema.
-"""
 from __future__ import annotations
-
 from pydantic import BaseModel
 
 

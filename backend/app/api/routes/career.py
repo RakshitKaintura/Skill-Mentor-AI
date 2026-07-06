@@ -1,7 +1,4 @@
-"""
-Career Prep API Routes — Agent 8
-Handles mock interviews, AI resume audits, job readiness scoring, and certification.
-"""
+
 import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any

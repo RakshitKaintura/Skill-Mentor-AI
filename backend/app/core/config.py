@@ -5,8 +5,6 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # API Keys & URLs
     gemini_api_key: str
-    # Optional: comma-separated list of extra Gemini keys for rotation
-    # e.g. GEMINI_API_KEYS="key1,key2,key3" in .env
     gemini_api_keys: str = ""
     supabase_url: str
     supabase_service_key: str

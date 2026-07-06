@@ -1,8 +1,4 @@
-"""
-Agent 7 — Project Mentor
-Assigns industry-grade projects, conducts senior-level code reviews, 
-and provides architectural guidance.
-"""
+
 import json
 import logging
 from datetime import datetime, timezone

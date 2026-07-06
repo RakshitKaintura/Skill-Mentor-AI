@@ -1,7 +1,4 @@
-"""
-Code Playground Coach API Routes — Agent 3
-Handles generation of coding challenges, Socratic hinting, and AI-driven code evaluation.
-"""
+
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
