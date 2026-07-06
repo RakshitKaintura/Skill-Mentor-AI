@@ -2,12 +2,20 @@ import os
 import re
 import tempfile
 from typing import List, Dict, Any
-from docling.document_converter import DocumentConverter
 from app.core.gemini import embed_content
 from app.core.database import get_supabase
 
-# Initialize Docling once for the service lifecycle
-converter = DocumentConverter()
+_converter = None
+
+
+def get_document_converter():
+    """Load Docling only when a PDF actually needs processing."""
+    global _converter
+    if _converter is None:
+        from docling.document_converter import DocumentConverter
+
+        _converter = DocumentConverter()
+    return _converter
 
 def chunk_text_by_sentence(text: str, chunk_size: int = 1000, overlap: int = 100) -> List[str]:
     """
@@ -51,7 +59,7 @@ async def process_uploaded_book(
             temp_path = tmp.name
 
         # 1. High-fidelity extraction (Docling handles complex PDF layouts)
-        result = converter.convert(temp_path)
+        result = get_document_converter().convert(temp_path)
         full_markdown = result.document.export_to_markdown()
         
         # 2. Semantic Chunking
