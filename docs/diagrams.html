@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillMentor AI — Architecture Diagrams</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: false, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: false, showSequenceNumbers: true, actorMargin: 80, mirrorActors: false },
+      er: { useMaxWidth: false, fontSize: 13 },
+      themeVariables: {
+        primaryColor: '#6d28d9',
+        primaryTextColor: '#f1f5f9',
+        primaryBorderColor: '#7c3aed',
+        lineColor: '#a78bfa',
+        secondaryColor: '#1e1b4b',
+        tertiaryColor: '#0f172a',
+        background: '#0f172a',
+        mainBkg: '#1e1b4b',
+        nodeBorder: '#7c3aed',
+        clusterBkg: '#1e1b4b22',
+        clusterBorder: '#4c1d95',
+        titleColor: '#e2e8f0',
+        actorBkg: '#6d28d9',
+        actorBorder: '#a78bfa',
+        actorTextColor: '#f8fafc',
+        actorLineColor: '#a78bfa',
+        noteBkgColor: '#1e1b4b',
+        noteTextColor: '#e2e8f0',
+        noteBorderColor: '#7c3aed',
+        activationBkgColor: '#4c1d95',
+        signalColor: '#c4b5fd',
+        labelBoxBkgColor: '#1e1b4b',
+        labelTextColor: '#e2e8f0',
+        loopTextColor: '#c4b5fd',
+      }
+    });
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a1a;
+      --bg-secondary: #111127;
+      --bg-card: #16163a;
+      --bg-card-hover: #1c1c4a;
+      --border: #2a2a5a;
+      --border-glow: #6d28d9;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #7c3aed;
+      --accent-light: #a78bfa;
+      --accent-glow: rgba(124, 58, 237, 0.3);
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Hero Header ─────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 3rem 1.5rem 2rem;
+      background: linear-gradient(180deg, #1a103d 0%, var(--bg-primary) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+    .hero p { color: var(--text-secondary); font-size: 0.95rem; max-width: 600px; margin: 0 auto; }
+
+    /* ── Navigation ──────────────────────────── */
+    .nav-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 10, 26, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .nav-btn {
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-btn:hover { border-color: var(--accent-light); color: var(--accent-light); background: var(--accent-glow); }
+    .nav-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 16px var(--accent-glow); }
+
+    /* ── Diagram Sections ────────────────────── */
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+    .diagram-section {
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--bg-card);
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .diagram-section:hover { border-color: var(--border-glow); }
+
+    .diagram-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .diagram-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .diagram-header h2 .emoji { font-size: 1.3rem; }
+
+    .controls { display: flex; gap: 0.4rem; align-items: center; }
+    .ctrl-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .ctrl-btn:hover { border-color: var(--accent-light); color: var(--accent-light); background: var(--accent-glow); }
+    .ctrl-btn:active { transform: scale(0.92); }
+    .zoom-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      min-width: 42px;
+      text-align: center;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Diagram Viewport ────────────────────── */
+    .diagram-viewport {
+      position: relative;
+      overflow: hidden;
+      min-height: 400px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.03) 0%, transparent 70%),
+        var(--bg-primary);
+      cursor: grab;
+    }
+    .diagram-viewport:active { cursor: grabbing; }
+
+    .diagram-canvas {
+      transform-origin: 0 0;
+      transition: transform 0.08s ease-out;
+      padding: 2rem;
+      display: inline-block;
+      min-width: 100%;
+    }
+
+    .diagram-canvas svg { max-width: none !important; height: auto !important; }
+
+    /* ── Fullscreen ───────────────────────────── */
+    .diagram-section.fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      margin: 0;
+      border-radius: 0;
+      border: none;
+    }
+    .diagram-section.fullscreen .diagram-viewport {
+      height: calc(100vh - 64px);
+    }
+
+    /* ── Help Tooltip ────────────────────────── */
+    .help-tip {
+      text-align: center;
+      padding: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    /* ── Scrollbar ────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 1.6rem; }
+      .diagram-header { padding: 0.75rem; }
+      .diagram-header h2 { font-size: 0.95rem; }
+      .nav-bar { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <h1>🚀 SkillMentor AI — Architecture Diagrams</h1>
+    <p>Interactive, zoomable diagrams. Scroll to zoom, drag to pan, or use the controls. Click fullscreen for detail.</p>
+  </div>
+
+  <nav class="nav-bar" id="navbar">
+    <button class="nav-btn active" data-target="high-level">🏗️ High-Level Architecture</button>
+    <button class="nav-btn" data-target="er-diagram">🗄️ ER Diagram</button>
+    <button class="nav-btn" data-target="auth-flow">🔐 Authentication Flow</button>
+    <button class="nav-btn" data-target="roadmap-flow">🗺️ Roadmap Flow</button>
+    <button class="nav-btn" data-target="lesson-flow">📖 Lesson + Doubt Flow</button>
+    <button class="nav-btn" data-target="stream-flow">⚡ Streaming Flow</button>
+    <button class="nav-btn" data-target="voice-flow">🎙️ Voice Interview Flow</button>
+    <button class="nav-btn" data-target="playground-flow">💻 Code Playground Flow</button>
+  </nav>
+
+  <div class="container">
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 1. HIGH-LEVEL ARCHITECTURE              -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="high-level">
+      <div class="diagram-header">
+        <h2><span class="emoji">🏗️</span> High-Level Architecture</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+graph TB
+    subgraph Client["🖥️ Client Layer"]
+        Browser["Browser / PWA"]
+    end
+
+    subgraph Frontend["🎨 Frontend — Next.js 16 · Port 3000"]
+        direction TB
+        AppRouter["App Router — 24 Page Routes"]
+        Middleware["Proxy Middleware — Auth Guard + Cookie Sync"]
+        Components["React 19 Components — Framer Motion + Recharts"]
+        Hooks["Custom Hooks — useAuth · useVoice · useStreamingAI · useQuiz · usePlayground · useNotes"]
+        SupabaseSSR["Supabase SSR Client — Browser + Server + Admin"]
+    end
+
+    subgraph Backend["⚙️ Backend — FastAPI · Port 8000"]
+        direction TB
+        CORS["CORS Middleware"]
+        RateLimit["SlowAPI Rate Limiter — 100 req/min"]
+        CorrelationID["Correlation ID Middleware — X-Request-ID Tracing"]
+        GlobalExHandler["Global Exception Handler"]
+
+        subgraph Agents["🤖 AI Agent Layer — LangGraph + Gemini"]
+            direction LR
+            A1["Roadmap Architect"]
+            A2["Lesson Teacher"]
+            A3["Doubt Solver"]
+            A4["Quiz Examiner"]
+            A5["Code Coach"]
+            A6["Progress Tracker"]
+            A7["Daily Challenge Coach"]
+            A8["Project Mentor"]
+            A9["Career Prep"]
+        end
+
+        subgraph Services["🔧 Supporting Services"]
+            direction LR
+            S1["RAG Service — pgvector Semantic Search"]
+            S2["TTS Service — Text-to-Speech"]
+            S3["Certificate Service — ReportLab PDF"]
+            S4["Notes Service — CRUD + AI Summary"]
+            S5["Memory Service — Rolling Summary Buffer"]
+            S6["Analytics Service — Event Tracking"]
+            S7["Notification Service"]
+            S8["Judge0 Service — Sandboxed Code Execution"]
+        end
+
+        subgraph Routes["📡 API Routes — /api"]
+            direction LR
+            R1["roadmap · lessons · quiz"]
+            R2["voice · stream · playground"]
+            R3["career · projects · daily"]
+            R4["books · notes · sandbox"]
+            R5["analytics · admin · health"]
+        end
+    end
+
+    subgraph Infrastructure["☁️ Infrastructure Layer"]
+        direction LR
+        Supabase["Supabase — PostgreSQL + Auth + Storage + RLS"]
+        Gemini["Google Gemini 3.1 Flash Lite Preview"]
+        Redis["Redis 7 — Key Rotation Cooldowns"]
+        Judge0["Judge0 CE — Code Sandbox"]
+        VAPI["Vapi AI — Voice WebSocket"]
+    end
+
+    Browser --> Middleware
+    Middleware --> AppRouter
+    AppRouter --> Components
+    Components --> Hooks
+    Hooks --> SupabaseSSR
+    SupabaseSSR --> Supabase
+
+    Hooks -->|"REST / WebSocket"| CORS
+    CORS --> RateLimit --> CorrelationID --> GlobalExHandler
+    GlobalExHandler --> Routes
+    Routes --> Agents
+    Routes --> Services
+
+    Agents --> Gemini
+    Agents --> Supabase
+    Services --> Supabase
+    Services --> Redis
+    Services --> Judge0
+    S1 --> Gemini
+    Hooks -->|"Voice WebSocket"| VAPI
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 2. ER DIAGRAM                           -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="er-diagram">
+      <div class="diagram-header">
+        <h2><span class="emoji">🗄️</span> Entity-Relationship Diagram</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+erDiagram
+    auth_users ||--|| profiles : "1:1 auto-created"
+    profiles ||--o{ roadmaps : "has many"
+    profiles ||--o{ lessons : "has many"
+    profiles ||--o{ quizzes : "has many"
+    profiles ||--o{ user_books : "uploads"
+    profiles ||--|| user_progress : "has one"
+    profiles ||--o{ voice_sessions : "has many"
+    profiles ||--o{ doubts : "has many"
+    profiles ||--o{ code_challenges : "has many"
+    profiles ||--o{ spaced_repetition : "has many"
+    profiles ||--o{ report_cards : "has many"
+    profiles ||--o{ projects : "has many"
+    profiles ||--o{ interview_sessions : "has many"
+    profiles ||--o{ resumes : "has many"
+    profiles ||--o{ certificates : "earns"
+    profiles ||--o{ daily_challenges : "has many"
+    profiles ||--o{ notifications : "receives"
+    profiles ||--o{ user_notes : "writes"
+    profiles ||--o{ user_memory : "has many"
+    profiles ||--o{ analytics_events : "generates"
+    profiles ||--o{ study_buddy_sessions : "hosts"
+
+    roadmaps ||--o{ lessons : "contains"
+    roadmaps ||--o{ quizzes : "generates"
+    roadmaps ||--o{ code_challenges : "generates"
+    roadmaps ||--o{ projects : "assigns"
+    roadmaps ||--o{ interview_sessions : "scoped to"
+    roadmaps ||--o{ resumes : "scoped to"
+    roadmaps ||--o{ report_cards : "weekly for"
+    roadmaps ||--o{ voice_sessions : "scoped to"
+    roadmaps ||--o{ spaced_repetition : "tracks"
+    roadmaps ||--o{ daily_challenges : "scoped to"
+
+    lessons ||--o{ quizzes : "generates"
+    lessons ||--o{ doubts : "context for"
+    lessons ||--o{ voice_sessions : "context for"
+    lessons ||--o{ code_challenges : "linked to"
+    lessons ||--o{ user_notes : "annotated in"
+
+    user_books ||--o{ book_chunks : "chunked into"
+    quizzes ||--o{ study_buddy_sessions : "shared in"
+
+    auth_users {
+        uuid id PK
+        text email
+        jsonb raw_user_meta_data
+    }
+    profiles {
+        uuid id PK
+        text full_name
+        text email
+        text current_skill
+        boolean onboarding_completed
+        text preferred_language
+    }
+    roadmaps {
+        uuid id PK
+        uuid user_id FK
+        text skill
+        text level
+        text goal
+        float hours_per_day
+        int total_weeks
+        jsonb phases
+    }
+    lessons {
+        uuid id PK
+        uuid roadmap_id FK
+        uuid user_id FK
+        text topic
+        jsonb steps
+        boolean completed
+    }
+    quizzes {
+        uuid id PK
+        uuid user_id FK
+        text topic
+        text quiz_type
+        jsonb questions
+        int score
+        int xp_awarded
+    }
+    user_books {
+        uuid id PK
+        uuid user_id FK
+        text file_name
+        text skill_tag
+        text processing_status
+        boolean is_curated
+    }
+    book_chunks {
+        uuid id PK
+        uuid book_id FK
+        text content
+        vector embedding
+        text source_label
+    }
+    user_progress {
+        uuid id PK
+        uuid user_id FK
+        int xp_points
+        int streak_days
+        int lessons_completed
+        jsonb topic_mastery
+    }
+    voice_sessions {
+        uuid id PK
+        uuid user_id FK
+        text topic
+        text transcript
+        text status
+    }
+    doubts {
+        uuid id PK
+        uuid user_id FK
+        text question
+        text answer
+        text analogy
+    }
+    code_challenges {
+        uuid id PK
+        uuid user_id FK
+        text title
+        text difficulty
+        boolean passed
+        int xp_awarded
+    }
+    spaced_repetition {
+        uuid id PK
+        uuid user_id FK
+        text topic
+        float ease_factor
+        int interval_days
+    }
+    report_cards {
+        uuid id PK
+        uuid user_id FK
+        int week_number
+        text overall_grade
+        text pdf_url
+    }
+    projects {
+        uuid id PK
+        uuid user_id FK
+        text title
+        text status
+        int score
+        text grade
+    }
+    interview_sessions {
+        uuid id PK
+        uuid user_id FK
+        text interview_type
+        int overall_score
+        boolean job_ready
+    }
+    resumes {
+        uuid id PK
+        uuid user_id FK
+        int ats_score
+        text ai_verdict
+        jsonb critique
+    }
+    certificates {
+        uuid id PK
+        uuid user_id FK
+        text skill
+        text verify_code
+        text pdf_url
+    }
+    daily_challenges {
+        uuid id PK
+        uuid user_id FK
+        date challenge_date
+        text type
+        boolean completed
+    }
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        text type
+        text title
+        boolean read
+    }
+    user_notes {
+        uuid id PK
+        uuid user_id FK
+        text topic
+        text content
+        text ai_summary
+    }
+    user_memory {
+        uuid id PK
+        uuid user_id FK
+        text session_summary
+    }
+    analytics_events {
+        uuid id PK
+        uuid user_id FK
+        text event_type
+        jsonb event_data
+    }
+    study_buddy_sessions {
+        uuid id PK
+        uuid host_user_id FK
+        text session_code
+        text status
+    }
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 3. AUTH FLOW                            -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="auth-flow">
+      <div class="diagram-header">
+        <h2><span class="emoji">🔐</span> Authentication Flow</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as User - Browser
+    participant MW as Next.js Middleware - proxy.ts
+    participant FE as Next.js Frontend - App Router
+    participant CB as Auth Callback - /auth/callback
+    participant SA as Supabase Auth
+    participant DB as Supabase DB - PostgreSQL
+    participant BE as FastAPI Backend
+
+    Note over U,BE: Registration Flow
+
+    U->>FE: Navigate to /auth/register
+    FE->>SA: supabase.auth.signUp with email + password + full_name
+    SA->>SA: Create auth.users entry
+    SA->>DB: TRIGGER handle_new_user - INSERT profiles
+    SA-->>FE: Confirmation email sent
+    U->>U: Click email confirmation link
+    U->>CB: GET /auth/callback?code=PKCE_CODE
+    CB->>SA: exchangeCodeForSession with code
+    SA-->>CB: JWT Access Token + Refresh Token via Set-Cookie
+    CB-->>U: 302 Redirect to /dashboard
+
+    Note over U,BE: Login Flow
+
+    U->>FE: Navigate to /auth/login
+    MW->>SA: getUser to check existing session
+    SA-->>MW: No session - allow page render
+    FE->>SA: supabase.auth.signInWithPassword
+    SA-->>FE: JWT Access Token + Refresh Token via Set-Cookie
+    FE-->>U: Redirect to /dashboard
+
+    Note over U,BE: Protected Route Access
+
+    U->>MW: Navigate to /dashboard
+    MW->>SA: getUser - validate JWT via Supabase
+
+    alt Valid Session
+        SA-->>MW: User object returned
+        MW->>FE: NextResponse.next - render page
+        FE->>FE: useAuth hook - getUser + onAuthStateChange
+        FE->>BE: API call with user_id in request body
+        BE->>DB: Supabase service_role client - query with user_id
+        DB-->>BE: Data with RLS bypassed via service_role
+        BE-->>FE: JSON response
+    else Invalid or Expired Session
+        SA-->>MW: No user or error
+        MW-->>U: 302 Redirect to /auth/login
+    end
+
+    Note over U,BE: Token Refresh - Automatic
+
+    FE->>SA: onAuthStateChange TOKEN_REFRESHED
+    SA-->>FE: New JWT + Refresh Token via Set-Cookie
+    FE->>FE: setUser with session.user - state updated silently
+
+    Note over U,BE: Logout Flow
+
+    U->>FE: Click Sign Out
+    FE->>SA: supabase.auth.signOut
+    SA-->>FE: Session cookies cleared
+    FE->>FE: setUser null + setLoading false
+    FE-->>U: Redirect to Landing Page
+
+    Note over U,BE: Admin Access
+
+    U->>FE: Navigate to /admin
+    FE->>BE: GET /api/admin with X-Admin-API-Key header
+    BE->>BE: Verify admin_api_key matches env
+    BE->>BE: Verify email in admin_allowed_emails
+    alt Authorized
+        BE-->>FE: Admin data from platform_stats view
+    else Unauthorized
+        BE-->>FE: 403 Forbidden
+    end
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 4a. ROADMAP FLOW                        -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="roadmap-flow">
+      <div class="diagram-header">
+        <h2><span class="emoji">🗺️</span> Roadmap Generation Flow</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant BE as FastAPI
+    participant RA as Roadmap Agent
+    participant G as Gemini 3.1
+    participant DB as Supabase
+
+    U->>FE: Select skill, level, goal, hours/day
+    FE->>BE: POST /api/roadmap/generate
+    Note right of FE: user_id, skill, level, goal, hours_per_day
+    BE->>BE: Validate via Pydantic GenerateRoadmapRequest
+    BE->>RA: Invoke roadmap_agent.generate
+    RA->>RA: Build system prompt with skill pedagogy context
+    RA->>G: generate_content with prompt and config
+    G-->>RA: Structured JSON with phases, topics, projects
+    RA->>RA: Parse and validate via GeneratedRoadmap schema
+    RA->>DB: INSERT INTO roadmaps with phases JSONB
+    RA->>DB: INSERT INTO user_progress if not exists
+    DB-->>RA: roadmap_id
+    RA-->>BE: roadmap_id, total_weeks, phases_count
+    BE-->>FE: 200 OK - GenerateRoadmapResponse
+    FE-->>U: Render interactive roadmap visualization
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 4b. LESSON + DOUBT FLOW                 -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="lesson-flow">
+      <div class="diagram-header">
+        <h2><span class="emoji">📖</span> Lesson + Doubt Solving Flow (with RAG)</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant BE as FastAPI
+    participant LA as Lesson Agent
+    participant DA as Doubt Agent
+    participant RAG as RAG Service
+    participant G as Gemini 3.1
+    participant DB as Supabase
+
+    U->>FE: Click topic on roadmap
+    FE->>BE: POST /api/lessons/generate
+    Note right of FE: user_id, roadmap_id, topic, skill, level
+    BE->>LA: Invoke lesson_agent.generate
+    LA->>RAG: search_relevant_chunks for topic, skill, user_id
+    RAG->>G: embed_content for topic - 768-dim vector
+    G-->>RAG: query_embedding
+    RAG->>DB: RPC search_book_chunks with embedding, user_id, skill
+    DB-->>RAG: Top-K relevant chunks + source_labels
+    RAG-->>LA: Context chunks for grounded generation
+    LA->>G: generate_content with prompt + RAG context
+    G-->>LA: Structured lesson with 6 steps from intro to summary
+    LA->>DB: INSERT INTO lessons with steps JSONB and sources_used
+    LA-->>BE: lesson_id, topic, steps_count
+    BE-->>FE: 200 OK - GenerateLessonResponse
+    FE-->>U: Render interactive lesson with step navigation
+
+    Note over U,DB: Student asks a doubt during lesson
+
+    U->>FE: Type question in doubt panel
+    FE->>BE: POST /api/lessons/doubt
+    Note right of FE: user_id, lesson_id, topic, skill, question
+    BE->>DA: Invoke doubt_agent.solve
+    DA->>DA: Load lesson context from DB
+    DA->>G: generate_content with doubt prompt + lesson context
+    G-->>DA: answer, analogy, code_example
+    DA->>DB: INSERT INTO doubts
+    DA-->>BE: DoubtResponse
+    BE-->>FE: 200 OK
+    FE-->>U: Display answer with analogy + code
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 4c. STREAMING FLOW                      -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="stream-flow">
+      <div class="diagram-header">
+        <h2><span class="emoji">⚡</span> Streaming AI Response Flow (SSE)</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant Hook as useStreamingAI Hook
+    participant BE as FastAPI
+    participant G as Gemini 3.1
+
+    U->>FE: Trigger streaming action
+    FE->>Hook: startStream with prompt and context
+    Hook->>BE: POST /api/stream/lesson
+    Note right of Hook: user_id, topic, context
+    BE->>G: generate_content_stream with prompt and config
+
+    loop Server-Sent Events SSE
+        G-->>BE: chunk type thought with AI reasoning
+        BE-->>Hook: SSE data type thought
+        Hook->>FE: Update AI Thought Process panel
+
+        G-->>BE: chunk type text with AI answer
+        BE-->>Hook: SSE data type text
+        Hook->>FE: Append to lesson content with typewriter effect
+    end
+
+    G-->>BE: chunk type done
+    BE-->>Hook: SSE data type done
+    Hook->>FE: Mark streaming complete
+    FE-->>U: Full lesson rendered
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 4d. VOICE INTERVIEW FLOW                -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="voice-flow">
+      <div class="diagram-header">
+        <h2><span class="emoji">🎙️</span> Voice Interview Flow</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant VH as useVapiInterview Hook
+    participant VAPI as Vapi AI - WebSocket
+    participant BE as FastAPI
+    participant CA as Career Agent
+    participant G as Gemini 3.1
+    participant DB as Supabase
+
+    U->>FE: Start Mock Interview with skill, type, company
+    FE->>BE: POST /api/career/interview/start
+    BE->>CA: career_prep_agent.start_interview
+    CA->>G: Generate interview questions
+    G-->>CA: Structured questions as JSONB
+    CA->>DB: INSERT INTO interview_sessions
+    CA-->>BE: session_id and questions
+    BE-->>FE: Interview session ready
+
+    FE->>VH: Connect Vapi voice session
+    VH->>VAPI: WebSocket connect with API key
+
+    loop Per Question
+        VAPI-->>U: AI speaks question via TTS
+        U->>VAPI: User speaks answer via STT
+        VAPI-->>VH: Transcript of user answer
+        VH->>BE: POST /api/career/interview/answer
+        Note right of VH: session_id, question_index, answer_text
+        BE->>CA: Evaluate answer
+        CA->>G: Score answer against criteria
+        G-->>CA: Evaluation + feedback
+        CA->>DB: UPDATE interview_sessions with answers and evaluations
+        CA-->>BE: Next question or final feedback
+        BE-->>VH: Evaluation result
+    end
+
+    VH->>BE: POST /api/career/interview/complete
+    BE->>CA: Generate overall assessment
+    CA->>G: Summarize performance
+    CA->>DB: UPDATE interview_sessions with overall_score and job_ready
+    CA-->>BE: Final report
+    BE-->>FE: score, strengths, improvements, job_ready
+    FE-->>U: Display interview report card
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 4e. CODE PLAYGROUND FLOW                -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="diagram-section" id="playground-flow">
+      <div class="diagram-header">
+        <h2><span class="emoji">💻</span> Code Playground (Socratic Coach) Flow</h2>
+        <div class="controls">
+          <button class="ctrl-btn" data-action="zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-label">100%</span>
+          <button class="ctrl-btn" data-action="zoom-in" title="Zoom In">+</button>
+          <button class="ctrl-btn" data-action="reset" title="Reset View">↺</button>
+          <button class="ctrl-btn" data-action="fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="diagram-viewport">
+        <div class="diagram-canvas">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant PH as usePlayground Hook
+    participant BE as FastAPI
+    participant CC as Code Coach
+    participant J0 as Judge0 CE
+    participant G as Gemini 3.1
+    participant DB as Supabase
+
+    U->>FE: Open code playground for topic
+    FE->>BE: POST /api/playground/challenge
+    Note right of FE: user_id, topic, skill, difficulty
+    BE->>CC: code_coach_agent.generate_challenge
+    CC->>G: Generate coding challenge
+    G-->>CC: title, description, starter_code, test_cases, hints
+    CC->>DB: INSERT INTO code_challenges
+    CC-->>BE: Challenge response
+    BE-->>FE: Challenge with starter code
+    FE-->>U: Render code editor + instructions
+
+    U->>FE: Write code + click Run
+    FE->>PH: submitCode with user_code
+    PH->>BE: POST /api/v1/sandbox/run
+    Note right of PH: source_code, language, test_cases
+    BE->>J0: POST /submissions with base64 encoded code
+    J0-->>BE: stdout, stderr, status, time, memory
+    BE-->>PH: Execution results
+    PH->>FE: Display output or errors
+
+    U->>FE: Click Get Hint
+    FE->>BE: POST /api/playground/hint
+    Note right of FE: challenge_id, current_code
+    BE->>CC: Socratic hint with no direct answer
+    CC->>G: Generate guiding hint
+    G-->>CC: Hint text
+    CC-->>BE: Hint response
+    BE-->>FE: Display hint and increment hint_count
+
+    U->>FE: Click Submit Solution
+    FE->>BE: POST /api/playground/submit
+    BE->>CC: Evaluate final solution
+    CC->>G: AI code review
+    G-->>CC: Feedback + score
+    CC->>DB: RPC complete_challenge to award XP
+    DB-->>CC: xp_awarded and passed
+    CC-->>BE: Evaluation result
+    BE-->>FE: passed, xp_awarded, ai_feedback
+    FE-->>U: Challenge result + XP animation
+          </pre>
+        </div>
+      </div>
+      <div class="help-tip">🖱️ Scroll to zoom · Drag to pan · Click ⛶ for fullscreen</div>
+    </section>
+
+  </div>
+
+  <script>
+    // ── Zoom / Pan / Fullscreen Controller ──────────────────
+    document.querySelectorAll('.diagram-section').forEach(section => {
+      const viewport = section.querySelector('.diagram-viewport');
+      const canvas = section.querySelector('.diagram-canvas');
+      const zoomLabel = section.querySelector('.zoom-label');
+
+      let scale = 1;
+      let panX = 0, panY = 0;
+      let isPanning = false;
+      let startX, startY;
+      const ZOOM_STEP = 0.15;
+      const MIN_ZOOM = 0.2;
+      const MAX_ZOOM = 5;
+
+      function applyTransform(smooth = false) {
+        canvas.style.transition = smooth ? 'transform 0.25s ease' : 'transform 0.08s ease-out';
+        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        zoomLabel.textContent = Math.round(scale * 100) + '%';
+      }
+
+      // Scroll to zoom
+      viewport.addEventListener('wheel', e => {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const prevScale = scale;
+        const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale + delta));
+
+        // Zoom towards cursor
+        const scaleChange = scale / prevScale;
+        panX = mouseX - (mouseX - panX) * scaleChange;
+        panY = mouseY - (mouseY - panY) * scaleChange;
+
+        applyTransform();
+      }, { passive: false });
+
+      // Drag to pan
+      viewport.addEventListener('mousedown', e => {
+        isPanning = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+        viewport.style.cursor = 'grabbing';
+      });
+      document.addEventListener('mousemove', e => {
+        if (!isPanning) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform();
+      });
+      document.addEventListener('mouseup', () => {
+        isPanning = false;
+        viewport.style.cursor = 'grab';
+      });
+
+      // Touch support
+      let lastTouchDist = 0;
+      let lastTouchX = 0, lastTouchY = 0;
+
+      viewport.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          isPanning = true;
+          startX = e.touches[0].clientX - panX;
+          startY = e.touches[0].clientY - panY;
+        } else if (e.touches.length === 2) {
+          isPanning = false;
+          lastTouchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          lastTouchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          lastTouchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        }
+      }, { passive: true });
+
+      viewport.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (e.touches.length === 1 && isPanning) {
+          panX = e.touches[0].clientX - startX;
+          panY = e.touches[0].clientY - startY;
+          applyTransform();
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const prevScale = scale;
+          scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale * (dist / lastTouchDist)));
+
+          const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+          const rect = viewport.getBoundingClientRect();
+          const cx = midX - rect.left;
+          const cy = midY - rect.top;
+
+          const scaleChange = scale / prevScale;
+          panX = cx - (cx - panX) * scaleChange;
+          panY = cy - (cy - panY) * scaleChange;
+
+          lastTouchDist = dist;
+          applyTransform();
+        }
+      }, { passive: false });
+
+      viewport.addEventListener('touchend', () => { isPanning = false; });
+
+      // Button controls
+      section.querySelectorAll('.ctrl-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const action = btn.dataset.action;
+          if (action === 'zoom-in') {
+            scale = Math.min(MAX_ZOOM, scale + ZOOM_STEP);
+            applyTransform(true);
+          } else if (action === 'zoom-out') {
+            scale = Math.max(MIN_ZOOM, scale - ZOOM_STEP);
+            applyTransform(true);
+          } else if (action === 'reset') {
+            scale = 1; panX = 0; panY = 0;
+            applyTransform(true);
+          } else if (action === 'fullscreen') {
+            section.classList.toggle('fullscreen');
+            if (!section.classList.contains('fullscreen')) {
+              scale = 1; panX = 0; panY = 0;
+              applyTransform(true);
+            }
+          }
+        });
+      });
+
+      // ESC to exit fullscreen
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && section.classList.contains('fullscreen')) {
+          section.classList.remove('fullscreen');
+          scale = 1; panX = 0; panY = 0;
+          applyTransform(true);
+        }
+      });
+    });
+
+    // ── Navbar scroll navigation ────────────────────────────
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = document.getElementById(btn.dataset.target);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    // Update active nav on scroll
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+          const btn = document.querySelector(`.nav-btn[data-target="${entry.target.id}"]`);
+          if (btn) btn.classList.add('active');
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('.diagram-section').forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>
