@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { LessonService } from '@/services/lesson.service'
 
 /**
  * SessionManager ensures that any generated lessons are deleted when the user
@@ -13,10 +14,7 @@ export function SessionManager() {
     
     const cleanupLessonsForUser = async (userId: string) => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
-        await fetch(`${apiUrl}/lesson/cleanup/${userId}`, {
-          method: 'DELETE',
-        })
+        await LessonService.cleanupLessons(userId)
         console.log('Cleaned up previous session lessons.')
       } catch (e) {
         console.error('Failed to cleanup session lessons:', e)

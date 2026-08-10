@@ -1,8 +1,9 @@
-import uuid
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, status, Depends
+from supabase import Client
+
 from app.models.schemas import BookUploadResponse, BookStatusResponse, ProcessingStatus
-from app.services.rag_service import process_uploaded_book
 from app.core.database import get_supabase
+from app.services.books_service import BooksService
 
 router = APIRouter(prefix="/books", tags=["Books & RAG"])
 
@@ -10,22 +11,24 @@ router = APIRouter(prefix="/books", tags=["Books & RAG"])
 MAX_SIZE = 50 * 1024 * 1024  # 50 MB
 ALLOWED_MIME_TYPES = ["application/pdf"]
 
+def get_books_service(supabase: Client = Depends(get_supabase)) -> BooksService:
+    return BooksService(supabase)
+
 @router.post("/upload", response_model=BookUploadResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_book(
     background_tasks: BackgroundTasks,
     user_id: str = Form(...),
     skill_tag: str = Form(...),
     file: UploadFile = File(...),
+    service: BooksService = Depends(get_books_service)
 ):
     """
     Receives a PDF, validates its integrity, and queues it for RAG processing.
     Processing occurs in a non-blocking background task.
     """
-    # 1. Validation
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid file type. Only PDFs are supported.")
 
-    # Read bytes for size validation and processing
     file_bytes = await file.read()
     file_size = len(file_bytes)
 
@@ -34,50 +37,29 @@ async def upload_book(
     if file_size < 1024:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "File is too small or corrupted.")
 
-    # 2. Database Record Initialization
-    supabase = get_supabase()
-    book_id = str(uuid.uuid4())
-    clean_skill = skill_tag.lower().strip()
-
-    # We store the initial pending state
-    supabase.table("user_books").insert({
-        "id": book_id,
-        "user_id": user_id,
-        "file_name": file.filename,
-        "skill_tag": clean_skill,
-        "processing_status": ProcessingStatus.PENDING.value,
-        "file_size_bytes": file_size,
-    }).execute()
-
-    # 3. Queue RAG Service
-    # Note: We pass the bytes directly to the background task
-    background_tasks.add_task(
-        process_uploaded_book,
-        book_id=book_id,
+    book_id = service.initialize_upload(
         user_id=user_id,
+        file_name=file.filename or "unknown",
+        skill_tag=skill_tag,
+        file_size=file_size,
         file_bytes=file_bytes,
-        file_name=file.filename,
-        skill_tag=clean_skill,
+        background_tasks=background_tasks
     )
 
     return BookUploadResponse(
         book_id=book_id,
         file_name=file.filename or "unknown",
-        status=ProcessingStatus.PENDING,
+        status=ProcessingStatus.pending,
         message="Upload successful. Your mentor is now reading the material."
     )
 
 @router.get("/{book_id}/status", response_model=BookStatusResponse)
-async def get_book_status(book_id: str):
+async def get_book_status(
+    book_id: str,
+    service: BooksService = Depends(get_books_service)
+):
     """Checks the current progress of PDF embedding and topic detection."""
-    supabase = get_supabase()
-    
-    result = supabase.table("user_books").select("*").eq("id", book_id).single().execute()
-    
-    if not result.data:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Book record not found.")
-        
-    book = result.data
+    book = service.get_status(book_id)
     return BookStatusResponse(
         book_id=book["id"],
         file_name=book["file_name"],
@@ -88,23 +70,14 @@ async def get_book_status(book_id: str):
     )
 
 @router.delete("/{book_id}")
-async def delete_book(book_id: str, user_id: str):
+async def delete_book(
+    book_id: str, 
+    user_id: str,
+    service: BooksService = Depends(get_books_service)
+):
     """
     Deletes the book record and cascaded vector chunks.
     Ensures the requesting user owns the document.
     """
-    supabase = get_supabase()
-    
-    # Ownership verification
-    ownership_check = supabase.table("user_books").select("user_id").eq("id", book_id).single().execute()
-    
-    if not ownership_check.data:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Book not found.")
-    if ownership_check.data["user_id"] != user_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to delete this document.")
-
-    # Atomic deletion
-    # Ensure your Supabase schema has 'ON DELETE CASCADE' for book_chunks
-    supabase.table("user_books").delete().eq("id", book_id).execute()
-    
+    service.delete_book(book_id, user_id)
     return {"message": "Knowledge base updated. Book and chunks removed."}

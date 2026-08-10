@@ -5,8 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import type { ReportCard } from '@/types/week3'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { ProgressService } from '@/services/progress.service'
 
 interface ReportListResponse {
   reports?: ReportCard[]
@@ -65,8 +64,7 @@ function ReportPageContent() {
     if (!user || !roadmapId) return
     setLoading(true)
     try {
-      const res = await fetch(`${API}/api/progress/report-card/${user.id}?roadmap_id=${roadmapId}`)
-      const data = await res.json() as ReportListResponse
+      const data = await ProgressService.getReportCard(user.id, roadmapId) as ReportListResponse
       const reports = data.reports || []
       const thisWeek = reports.find((r) => r.week_number === weekNumber)
       if (thisWeek) setReport(normalizeReport(thisWeek))
@@ -88,14 +86,9 @@ function ReportPageContent() {
     setGenerating(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/api/progress/report-card`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await ProgressService.generateReportCard({
           user_id: user.id, roadmap_id: roadmapId, week_number: weekNumber
-        }),
-      })
-      const data = await res.json() as GenerateReportResponse
+      }) as GenerateReportResponse
       if (data.success && data.report) setReport(normalizeReport(data.report))
       else throw new Error(data.detail || 'Failed to generate report')
     } catch (e: unknown) {

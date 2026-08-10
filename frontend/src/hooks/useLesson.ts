@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { LessonService } from '@/services/lesson.service'
 
 export interface LessonStep {
   type:         'intro' | 'analogy' | 'code_demo' | 'try_it' | 'mistakes' | 'summary'
@@ -44,11 +45,9 @@ export function useLesson() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/${lessonId}`)
-      if (!res.ok) throw new Error('Lesson not found')
-      const data = await res.json()
+      const data = await LessonService.getLesson(lessonId)
       setLesson(data)
-      return data as Lesson
+      return data
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load lesson')
       return null
@@ -64,20 +63,9 @@ export function useLesson() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/generate`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, ...params }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Failed to generate lesson' }))
-        throw new Error(err.detail)
-      }
-
-      const data = await res.json()
+      const data = await LessonService.generateLesson(user.id, params)
       await fetchLesson(data.lesson_id)
-      return data.lesson_id as string
+      return data.lesson_id
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to generate lesson')
       return null
@@ -89,25 +77,25 @@ export function useLesson() {
   const completeLesson = useCallback(async (lessonId: string, timeSpentMinutes: number = 0) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/${lessonId}/complete`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: user.id, lesson_id: lessonId, time_spent_minutes: timeSpentMinutes }),
-    })
-    setLesson(prev => prev ? { ...prev, completed: true } : null)
+    try {
+      await LessonService.completeLesson(user.id, lessonId, timeSpentMinutes)
+      setLesson(prev => prev ? { ...prev, completed: true } : null)
+    } catch (e) {
+      console.error('Failed to complete lesson:', e)
+    }
   }, [supabase])
 
   const generateNotes = useCallback(async (lessonId: string) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/lesson/${lessonId}/notes?user_id=${user.id}`,
-      { method: 'POST' }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    setLesson(prev => prev ? { ...prev, pdf_notes_url: data.pdf_url } : null)
-    return data.pdf_url as string
+    try {
+      const data = await LessonService.generateNotes(user.id, lessonId)
+      setLesson(prev => prev ? { ...prev, pdf_notes_url: data.pdf_url } : null)
+      return data.pdf_url
+    } catch (e) {
+      console.error('Failed to generate notes:', e)
+      return null
+    }
   }, [supabase])
 
   return { lesson, loading, error, generating, generateLesson, fetchLesson, completeLesson, generateNotes }

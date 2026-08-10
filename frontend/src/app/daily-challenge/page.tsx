@@ -9,8 +9,7 @@ import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
-
-const API = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:8000'
+import { DailyService } from '@/services/daily.service'
 
 type LoadState = 'loading' | 'no-user' | 'no-roadmap' | 'error'
 
@@ -43,15 +42,9 @@ export default function DailyChallengePage() {
           setState('no-roadmap')
           return
         }
-        const challengeRes = await fetch(
-          `${API}/api/daily/challenge/${user.id}?roadmap_id=${encodeURIComponent(roadmap.id)}&skill=${encodeURIComponent(roadmap.skill)}`
-        )
-        if (!challengeRes.ok) {
-          throw new Error(`Daily challenge request failed with status ${challengeRes.status}`)
-        }
-        const payload = await challengeRes.json() as { success?: boolean; challenge?: { challenge_id?: string; id?: string } }
-        const challengeId = payload.challenge?.challenge_id ? payload.challenge.challenge_id : payload.challenge?.id
-        if (!payload.success || !challengeId) {
+        const data = await DailyService.getDailyChallenge(user.id, roadmap.id, roadmap.skill)
+        const challengeId = data.challenge?.challenge_id ? data.challenge.challenge_id : data.challenge?.id
+        if (!data.success || !challengeId) {
           throw new Error('Daily challenge payload is missing challenge id')
         }
         router.replace(`/daily-challenge/${challengeId}`)

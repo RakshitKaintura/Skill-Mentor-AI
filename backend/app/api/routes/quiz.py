@@ -1,12 +1,11 @@
-
 import logging
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Query, Depends
 from pydantic import BaseModel
+from supabase import Client
 
-from app.agents.quiz_agent import generate_quiz, evaluate_quiz
-from app.agents.progress_agent import update_topic_mastery
 from app.core.database import get_supabase
+from app.services.quiz_service import QuizService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/quiz", tags=["Assessment"])
@@ -29,16 +28,22 @@ class SubmitQuizRequest(BaseModel):
     user_answers: List[Dict[str, Any]]
     time_taken: int = 0
 
+def get_quiz_service(supabase: Client = Depends(get_supabase)) -> QuizService:
+    return QuizService(supabase)
+
 # --- API Endpoints ---
 
 @router.post("/generate")
-async def generate_quiz_endpoint(req: GenerateQuizRequest):
+async def generate_quiz_endpoint(
+    req: GenerateQuizRequest,
+    service: QuizService = Depends(get_quiz_service)
+):
     """
     Triggers Agent 4 to create a personalized, adaptive quiz.
     Uses RAG and historical performance to tune difficulty.
     """
     try:
-        quiz = await generate_quiz(
+        quiz = await service.generate_quiz(
             user_id=req.user_id,
             roadmap_id=req.roadmap_id,
             topic=req.topic,
@@ -54,34 +59,23 @@ async def generate_quiz_endpoint(req: GenerateQuizRequest):
         raise HTTPException(status_code=500, detail="Failed to generate assessment.")
 
 @router.post("/submit")
-async def submit_quiz_endpoint(req: SubmitQuizRequest, background_tasks: BackgroundTasks):
+async def submit_quiz_endpoint(
+    req: SubmitQuizRequest, 
+    background_tasks: BackgroundTasks,
+    service: QuizService = Depends(get_quiz_service)
+):
     """
     Evaluates quiz submissions and triggers background mastery updates.
     Returns immediate feedback and XP rewards to the student.
     """
     try:
-        result = await evaluate_quiz(
+        result = await service.submit_quiz(
             quiz_id=req.quiz_id,
             user_id=req.user_id,
             user_answers=req.user_answers,
-            time_taken=req.time_taken
+            time_taken=req.time_taken,
+            background_tasks=background_tasks
         )
-
-        # Background Task: Update Topic Mastery
-        # We fetch the topic/skill metadata to ensure the Progress Agent targets the correct domain
-        supabase = get_supabase()
-        quiz_meta = supabase.table("quizzes").select("topic, skill") \
-            .eq("id", req.quiz_id).single().execute()
-        
-        if quiz_meta.data:
-            background_tasks.add_task(
-                update_topic_mastery,
-                user_id=req.user_id,
-                topic=quiz_meta.data["topic"],
-                skill=quiz_meta.data["skill"],
-                score_pct=result["percentage"]
-            )
-
         return {"success": True, "result": result}
     except Exception as e:
         logger.error(f"Submission evaluation failed: {e}")
@@ -91,25 +85,20 @@ async def submit_quiz_endpoint(req: SubmitQuizRequest, background_tasks: Backgro
 async def get_user_quizzes(
     user_id: str, 
     roadmap_id: Optional[str] = None, 
-    limit: int = Query(10, le=50)
+    limit: int = Query(10, le=50),
+    service: QuizService = Depends(get_quiz_service)
 ):
     """Retrieves history of assessments for a specific user."""
-    supabase = get_supabase()
-    query = supabase.table("quizzes").select("*").eq("user_id", user_id)
-    
-    if roadmap_id:
-        query = query.eq("roadmap_id", roadmap_id)
-    
-    result = query.order("created_at", desc=True).limit(limit).execute()
-    return {"quizzes": result.data or []}
+    quizzes = service.get_user_quizzes(user_id, roadmap_id, limit)
+    return {"quizzes": quizzes}
 
 @router.get("/{quiz_id}")
-async def get_quiz(quiz_id: str):
+async def get_quiz(
+    quiz_id: str,
+    service: QuizService = Depends(get_quiz_service)
+):
     """Fetches the full details (questions and solutions) for a specific quiz record."""
-    supabase = get_supabase()
-    result = supabase.table("quizzes").select("*").eq("id", quiz_id).single().execute()
-    
-    if not result.data:
+    quiz = service.get_quiz(quiz_id)
+    if not quiz:
         raise HTTPException(status_code=404, detail="Assessment record not found.")
-    
-    return result.data
+    return quiz

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
+import { AdminService } from '@/services/admin.service'
 
 type DashboardStats = {
   total_users: number
@@ -149,11 +150,7 @@ export default function AdminPage() {
     const load = async () => {
       setLoading(true)
       try {
-        const res = await fetch('/api/admin/stats', { cache: 'no-store' })
-        const payload = await res.json()
-        if (!res.ok) {
-          throw new Error(payload?.detail || 'Failed to load admin analytics')
-        }
+        const payload = await AdminService.getStats()
         setData(payload)
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Failed to load admin analytics')

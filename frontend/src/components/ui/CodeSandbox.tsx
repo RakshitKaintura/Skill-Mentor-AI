@@ -61,9 +61,7 @@ const LANGUAGES: { value: Language; label: string; extension: string; starter: s
 
 // ── Helpers ───────────────────────────────────────────────────
 
-function getApiBase() {
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-}
+import { SandboxService } from '@/services/sandbox.service'
 
 // ── Sub-components ────────────────────────────────────────────
 
@@ -148,19 +146,7 @@ export function CodeSandbox({
     abortRef.current = new AbortController()
 
     try {
-      const res = await fetch(`${getApiBase()}/api/v1/sandbox/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language, code, stdin: '' }),
-        signal: abortRef.current.signal,
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail || `Server error: ${res.status}`)
-      }
-
-      const data: ExecuteResult = await res.json()
+      const data = await SandboxService.executeCode({ language, code, stdin: '' }, abortRef.current.signal)
       setResult(data)
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return

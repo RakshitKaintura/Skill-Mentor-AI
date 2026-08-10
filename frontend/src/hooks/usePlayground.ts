@@ -1,8 +1,7 @@
 'use client'
 import { useState, useCallback } from 'react'
 import type { CodeChallenge, EvaluationResult } from '@/types/week3'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { PlaygroundService } from '@/services/playground.service'
 
 export function usePlayground() {
   const [challenge, setChallenge]     = useState<CodeChallenge | null>(null)
@@ -48,12 +47,7 @@ export function usePlayground() {
     setHint(null)
     setHintsUsed(0)
     try {
-      const res = await fetch(`${API}/api/playground/challenge/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
-      })
-      const data = await res.json()
+      const data = await PlaygroundService.generateChallenge(params)
       if (!data.success) throw new Error(data.detail || 'Failed to generate challenge')
       
       // Save to session storage
@@ -76,17 +70,12 @@ export function usePlayground() {
     if (nextLevel > 3) return
     setGettingHint(true)
     try {
-      const res = await fetch(`${API}/api/playground/hint`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await PlaygroundService.requestHint({
           challenge_id: challenge.challenge_id,
           user_id: userId,
           user_code: code,
           hint_level: nextLevel,
-        }),
       })
-      const data = await res.json()
       if (data.success) {
         setHint(data.hint)
         setHintsUsed(nextLevel)
@@ -101,17 +90,12 @@ export function usePlayground() {
     setEvaluating(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/api/playground/evaluate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await PlaygroundService.evaluateCode({
           challenge_id: challenge.challenge_id,
           user_id: userId,
           user_code: code,
           hints_used: hintsUsed,
-        }),
       })
-      const data = await res.json()
       if (data.success) setResult(data.result)
     } catch (e: unknown) {
       setError(getErrorMessage(e))
@@ -122,14 +106,9 @@ export function usePlayground() {
 
   const explainError = useCallback(async (errorMsg: string, language: string, topic: string) => {
     try {
-      const res = await fetch(`${API}/api/playground/explain-error`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await PlaygroundService.explainError({
           error_message: errorMsg, code, language, topic,
-        }),
       })
-      const data = await res.json()
       if (data.success) setErrorExplain(data.explanation)
     } catch { /* silent */ }
   }, [code])

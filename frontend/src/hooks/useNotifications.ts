@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import type { Notification } from '@/types/week5'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { DailyService } from '@/services/daily.service'
 
 export function useNotifications(userId: string) {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -11,10 +10,11 @@ export function useNotifications(userId: string) {
   const fetchNotifications = useCallback(async () => {
     if (!userId) return
     try {
-      const res  = await fetch(`${API}/api/daily/notifications/${userId}`)
-      const data = await res.json()
-      setNotifications(data.notifications || [])
-      setUnreadCount(data.count || 0)
+      const data = await DailyService.getNotifications(userId)
+      if (data.success) {
+        setNotifications(data.notifications || [])
+        setUnreadCount(data.count || 0)
+      }
     } catch { /* silent */ }
   }, [userId])
 
@@ -35,10 +35,9 @@ export function useNotifications(userId: string) {
   const markRead = useCallback(async (ids?: string[]) => {
     if (!userId) return
     try {
-      await fetch(`${API}/api/daily/notifications/read`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, notification_ids: ids }),
+      await DailyService.markNotificationsRead({
+        user_id: userId,
+        notification_ids: ids,
       })
       setNotifications(prev =>
         ids

@@ -1,8 +1,6 @@
-
-import json
-
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import StreamingResponse
+from supabase import Client
 
 from app.models.schemas import (
     GenerateLessonRequest, 
@@ -11,31 +9,26 @@ from app.models.schemas import (
     DoubtRequest, 
     DoubtResponse,
 )
-from app.agents.lesson_agent import generate_lesson, complete_lesson
-from app.agents.doubt_agent import solve_doubt
-from app.services.notes_service import generate_lesson_pdf
-from app.services.rag_service import retrieve_chunks, format_rag_context
 from app.core.database import get_supabase
-from app.core.gemini import get_gemini_client  # Standardized Client pattern
-from app.core.config import get_settings
+from app.services.lessons_service import LessonsService
 
 router = APIRouter(prefix="/lesson", tags=["Lessons"])
-settings = get_settings()
+
+def get_lessons_service(supabase: Client = Depends(get_supabase)) -> LessonsService:
+    return LessonsService(supabase)
 
 @router.post("/generate", response_model=GenerateLessonResponse)
-async def generate_lesson_endpoint(req: GenerateLessonRequest):
+async def generate_lesson_endpoint(
+    req: GenerateLessonRequest,
+    service: LessonsService = Depends(get_lessons_service)
+):
     """
     Triggers the RAG + GenAI pipeline to create a structured 6-step lesson.
     Optimized for Gemini 3.1 Flash Lite Preview.
     """
     try:
-        result = await generate_lesson(req)
-        return GenerateLessonResponse(
-            lesson_id=result["lesson_id"],
-            topic=result["topic"],
-            steps_count=len(result["steps"]),
-            message=result["message"],
-        )
+        result = await service.generate_lesson(req)
+        return GenerateLessonResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except RuntimeError as e:
@@ -44,71 +37,78 @@ async def generate_lesson_endpoint(req: GenerateLessonRequest):
         raise HTTPException(status_code=500, detail=f"Unexpected generation error: {str(e)}")
 
 @router.post("/doubt", response_model=DoubtResponse)
-async def ask_doubt(req: DoubtRequest):
+async def ask_doubt(
+    req: DoubtRequest,
+    service: LessonsService = Depends(get_lessons_service)
+):
     """
     24/7 Socratic Doubt Solver. 
     Provides tailored explanations and code using the student's uploaded context.
     """
     try:
-        return await solve_doubt(req)
+        return await service.ask_doubt(req)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Doubt resolution failed: {str(e)}")
 
 @router.delete("/cleanup/{user_id}")
-async def cleanup_user_lessons(user_id: str):
+async def cleanup_user_lessons(
+    user_id: str,
+    service: LessonsService = Depends(get_lessons_service)
+):
     """
     Deletes all previous lessons for a user when a new browser session is started.
     This ensures that old generated lessons are not stored permanently.
     """
-    supabase = get_supabase()
     try:
-        # Delete all lessons for this user
-        result = supabase.table("lessons").delete().eq("user_id", user_id).execute()
+        service.cleanup_user_lessons(user_id)
         return {"message": "Lessons cleaned up for new session", "status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cleanup lessons: {str(e)}")
 
 @router.get("/user/{user_id}")
-async def list_lessons(user_id: str, limit: int = 30):
+async def list_lessons(
+    user_id: str, 
+    limit: int = 30,
+    service: LessonsService = Depends(get_lessons_service)
+):
     """Retrieves a paginated list of generated lessons for a specific user profile."""
-    supabase = get_supabase()
-    result = (
-        supabase.table("lessons")
-        .select("id, topic, week_number, completed, completed_at, created_at, sources_used, key_takeaway")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .limit(limit)
-        .execute()
-    )
-    return result.data or []
+    return service.list_lessons(user_id, limit)
 
 @router.get("/{lesson_id}")
-async def get_lesson(lesson_id: str):
+async def get_lesson(
+    lesson_id: str,
+    service: LessonsService = Depends(get_lessons_service)
+):
     """Fetches the full JSON structure of a lesson, including all pedagogical steps."""
-    supabase = get_supabase()
-    result = supabase.table("lessons").select("*").eq("id", lesson_id).single().execute()
-    
-    if not result.data:
+    lesson = service.get_lesson(lesson_id)
+    if not lesson:
         raise HTTPException(status_code=404, detail="Lesson resource not found.")
-    
-    return result.data
+    return lesson
 
 @router.post("/{lesson_id}/complete")
-async def mark_complete(lesson_id: str, req: LessonCompleteRequest):
+async def mark_complete(
+    lesson_id: str, 
+    req: LessonCompleteRequest,
+    service: LessonsService = Depends(get_lessons_service)
+):
     """Records lesson completion, awards XP, and updates the user's learning streak."""
     try:
-        return await complete_lesson(req.user_id, lesson_id, req.time_spent_minutes)
+        return await service.mark_complete(lesson_id, req.user_id, req.time_spent_minutes)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Progress update failed: {str(e)}")
 
 @router.post("/{lesson_id}/notes")
-async def generate_notes(lesson_id: str, user_id: str = Query(...)):
+async def generate_notes(
+    lesson_id: str, 
+    user_id: str = Query(...),
+    service: LessonsService = Depends(get_lessons_service)
+):
     """
     Generates high-fidelity PDF study notes.
     Persists the asset to cloud storage and returns the secure public URL.
     """
     try:
-        pdf_url = await generate_lesson_pdf(lesson_id, user_id)
+        pdf_url = await service.generate_notes(lesson_id, user_id)
         return {
             "lesson_id": lesson_id, 
             "pdf_url": pdf_url, 
@@ -124,60 +124,20 @@ async def stream_lesson_intro(
     user_id: str = Query(...),
     skill: str = Query(...),
     level: str = Query("beginner"),
+    service: LessonsService = Depends(get_lessons_service)
 ):
     """
     Streams a real-time lesson introduction via Server-Sent Events (SSE).
     Uses the latest Gemini streaming capabilities for a 'live-typed' feel.
     """
-    # 1. Fetch context for the intro
-    rag_chunks = await retrieve_chunks(
-        query=f"{topic} {skill}", 
-        user_id=user_id,
-        skill_tag=skill.lower(), 
-        top_k=3, 
-        include_curated=True,
-    )
-    rag_context = format_rag_context(rag_chunks)
-
-    prompt = f"""
-    You are teaching {skill} to a {level} learner. 
-    Topic: {topic}.
+    generator = service.stream_lesson_intro_generator(roadmap_id, topic, user_id, skill, level)
     
-    [CONTEXT]
-    {rag_context}
-    
-    TASK: Write a 3-paragraph introduction explaining:
-    1. What it is.
-    2. Why it is critical to master.
-    3. A brief 'hook' using an analogy.
-    
-    Tone: Warm, authoritative, and direct (use "you").
-    """
-
-    async def event_generator():
-        try:
-            client = get_gemini_client()
-            # New 2026 SDK streaming pattern
-            response = client.models.generate_content(
-                model=settings.gemini_model,
-                contents=prompt,
-                config={'stream': True}
-            )
-            
-            for chunk in response:
-                if chunk.text:
-                    yield f"data: {json.dumps({'text': chunk.text})}\n\n"
-            
-            yield "data: [DONE]\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
     return StreamingResponse(
-        event_generator(),
+        generator,
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no" # Essential for Vercel/Nginx proxying
+            "X-Accel-Buffering": "no"
         },
     )

@@ -2,8 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Quiz, QuizResult } from '@/types/week3'
 import { useAnalytics } from '@/hooks/useAnalytics'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { QuizService } from '@/services/quiz.service'
 
 export function useQuiz() {
   const { track } = useAnalytics()
@@ -18,14 +17,6 @@ export function useQuiz() {
   const submitQuizRef = useRef<(quizId: string, userId: string, timeTaken: number) => Promise<void>>(async () => {})
 
   const getErrorMessage = (e: unknown) => (e instanceof Error ? e.message : 'Unexpected error')
-  const asErrorMessage = (detail: unknown, fallback: string) => {
-    if (typeof detail === 'string' && detail.trim()) return detail
-    if (Array.isArray(detail) && detail.length > 0) {
-      const first = detail[0] as { msg?: string }
-      if (first?.msg) return first.msg
-    }
-    return fallback
-  }
 
   const normalizeQuiz = (raw: Record<string, unknown>): Quiz => {
     const questions = Array.isArray(raw.questions) ? (raw.questions as Quiz['questions']) : []
@@ -75,13 +66,7 @@ export function useQuiz() {
     setResult(null)
     setAnswers({})
     try {
-      const res = await fetch(`${API}/api/quiz/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(asErrorMessage(data?.detail, 'Failed to generate quiz'))
+      const data = await QuizService.generateQuiz(params)
       if (!data.success) throw new Error(data.detail || 'Failed to generate quiz')
       setQuiz(data.quiz)
       setTimeLeft(data.quiz.time_limit_secs)
@@ -110,15 +95,10 @@ export function useQuiz() {
         question_id: parseInt(qId),
         answer,
       }))
-      const res = await fetch(`${API}/api/quiz/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await QuizService.submitQuiz({
           quiz_id: quizId, user_id: userId,
           user_answers: userAnswers, time_taken: timeTaken,
-        }),
       })
-      const data = await res.json()
       if (!data.success) throw new Error(data.detail || 'Failed to submit quiz')
       setResult(data.result)
       void track('quiz_submitted', {
@@ -150,9 +130,7 @@ export function useQuiz() {
     setAnswers({})
 
     try {
-      const res = await fetch(`${API}/api/quiz/${quizId}`)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Failed to load quiz')
+      const data = await QuizService.getQuizById(quizId)
 
       const normalized = normalizeQuiz(data)
       if (!normalized.quiz_id) throw new Error('Quiz record is missing an id')

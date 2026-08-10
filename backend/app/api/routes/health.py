@@ -1,15 +1,15 @@
-
 import asyncio
 import logging
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
+from supabase import Client
 
 from app.models.schemas import HealthResponse
 from app.core.config import get_settings
-from app.core.gemini import check_model_health
 from app.core.database import get_supabase
+from app.services.health_service import HealthService
 
 logger   = logging.getLogger("app.health")
 router   = APIRouter(tags=["System"])
@@ -19,69 +19,8 @@ settings = get_settings()
 _PROCESS_START = time.monotonic()
 
 
-# ── Individual dependency checks ─────────────────────────────
-
-async def check_gemini() -> bool:
-    """Verifies LLM availability by calling check_model_health()."""
-    try:
-        return await check_model_health()
-    except Exception as exc:
-        logger.warning("Gemini health check failed: %s", exc)
-        return False
-
-
-async def check_supabase() -> bool:
-    """Verifies Supabase DB connectivity."""
-    try:
-        supabase = get_supabase()
-        supabase.table("profiles").select("id").limit(1).execute()
-        return True
-    except Exception as exc:
-        logger.warning("Supabase health check failed: %s", exc)
-        return False
-
-
-async def check_storage() -> bool:
-    """
-    Verifies Supabase Storage is accessible by listing buckets.
-    A non-empty or empty list both indicate connectivity;
-    an exception indicates Storage is down.
-    """
-    try:
-        supabase = get_supabase()
-        supabase.storage.list_buckets()
-        return True
-    except Exception as exc:
-        logger.warning("Storage health check failed: %s", exc)
-        return False
-
-
-async def check_rag() -> bool:
-    """
-    Verifies the RAG documents table exists and has at least one row.
-    Returns False (not 'down') if empty — RAG simply has no data yet.
-    """
-    try:
-        supabase = get_supabase()
-        result = supabase.table("documents").select("id").limit(1).execute()
-        return True  # Table exists (even if empty the query succeeds)
-    except Exception as exc:
-        logger.warning("RAG health check failed: %s", exc)
-        return False
-
-
-async def check_notes() -> bool:
-    """
-    Verifies the user_notes migration has been run by querying the table.
-    Returns False if the migration hasn't been executed yet.
-    """
-    try:
-        supabase = get_supabase()
-        supabase.table("user_notes").select("id").limit(1).execute()
-        return True
-    except Exception as exc:
-        logger.warning("Notes table health check failed: %s", exc)
-        return False
+def get_health_service(supabase: Client = Depends(get_supabase)) -> HealthService:
+    return HealthService(supabase)
 
 
 async def check_rate_limiter(request: Request) -> bool:
@@ -98,7 +37,10 @@ async def check_rate_limiter(request: Request) -> bool:
 # ── Health endpoint ───────────────────────────────────────────
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check(request: Request):
+async def health_check(
+    request: Request,
+    service: HealthService = Depends(get_health_service)
+):
     """
     Parallel health check across all 6 platform dependencies.
     Returns structured status with per-check boolean flags,
@@ -109,11 +51,11 @@ async def health_check(request: Request):
     (
         gemini_ok, supabase_ok, storage_ok, rag_ok, notes_ok, limiter_ok,
     ) = await asyncio.gather(
-        check_gemini(),
-        check_supabase(),
-        check_storage(),
-        check_rag(),
-        check_notes(),
+        service.check_gemini(),
+        service.check_supabase(),
+        service.check_storage(),
+        service.check_rag(),
+        service.check_notes(),
         check_rate_limiter(request),
     )
 

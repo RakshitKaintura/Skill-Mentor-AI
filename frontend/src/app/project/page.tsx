@@ -6,8 +6,7 @@ import { useAnalytics } from '@/hooks/useAnalytics'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import type { Project, ProjectReview } from '@/types/week4'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { ProjectService } from '@/services/projects.service'
 
 interface MentorHint {
   mentor_response: string
@@ -173,8 +172,7 @@ function ProjectPageContent() {
     const fetchExisting = async () => {
       setLoading(true)
       try {
-        const res  = await fetch(`${API}/api/projects/${projectId}`)
-        const data = await res.json()
+        const data = await ProjectService.getProject(projectId)
         setProject(normalizeProject(data))
         if (data.submitted_code) setCode(data.submitted_code)
         if (data.github_url)     setGithub(data.github_url)
@@ -187,12 +185,7 @@ function ProjectPageContent() {
     const generateProject = async () => {
       setLoading(true)
       try {
-        const res  = await fetch(`${API}/api/projects/assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: user!.id, roadmap_id: roadmapId, skill, level }),
-        })
-        const data = await res.json()
+        const data = await ProjectService.assignProject({ user_id: user!.id, roadmap_id: roadmapId, skill, level })
         if (data.success) setProject(normalizeProject(data.project))
       } finally {
         setLoading(false)
@@ -202,8 +195,7 @@ function ProjectPageContent() {
     const loadOrCreateProject = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`${API}/api/projects/user/${user!.id}?roadmap_id=${roadmapId}&limit=5`)
-        const data = await res.json().catch(() => ({ projects: [] }))
+        const data = await ProjectService.getUserProjects(user!.id, roadmapId, 5).catch(() => ({ projects: [] }))
         const existing = (data.projects || [])[0]
         if (existing) {
           setProject(normalizeProject(existing))
@@ -245,12 +237,7 @@ function ProjectPageContent() {
     setRegenerating(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/api/projects/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, roadmap_id: roadmapId, skill, level }),
-      })
-      const data = await res.json()
+      const data = await ProjectService.assignProject({ user_id: user.id, roadmap_id: roadmapId, skill, level })
       if (data.success) {
         setProject(normalizeProject(data.project))
         setReview(null)
@@ -269,17 +256,12 @@ function ProjectPageContent() {
     if (!project || !code.trim()) return
     setReviewing(true)
     try {
-      const res  = await fetch(`${API}/api/projects/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await ProjectService.reviewProject({
           project_id: project.project_id,
           user_id: user!.id,
           submitted_code: code,
           github_url: github,
-        }),
       })
-      const data = await res.json()
       if (data.success) {
         const normalized = normalizeReview(data.review)
         setReview(normalized)
@@ -307,16 +289,11 @@ function ProjectPageContent() {
     if (!project || !question.trim()) return
     setHinting(true)
     try {
-      const res  = await fetch(`${API}/api/projects/hint`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await ProjectService.getProjectHint({
           project_id: project.project_id,
           user_id: user!.id,
           question,
-        }),
       })
-      const data = await res.json()
       if (data.success) {
         const rawHint = asRecord(data.hint)
         setHint({

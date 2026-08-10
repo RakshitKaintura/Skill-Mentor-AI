@@ -1,16 +1,11 @@
-
 import logging
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
+from supabase import Client
 
-from app.agents.code_coach_agent import (
-    generate_challenge, 
-    get_personalized_hint, 
-    evaluate_submission, 
-    explain_error
-)
-from app.services.judge0_service import execute_code, get_language_id
+from app.core.database import get_supabase
+from app.services.playground_service import PlaygroundService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/playground", tags=["Playground"])
@@ -51,16 +46,22 @@ class ExecuteRequest(BaseModel):
     language: str = "javascript"
     stdin: str = ""
 
+def get_playground_service(supabase: Client = Depends(get_supabase)) -> PlaygroundService:
+    return PlaygroundService(supabase)
+
 # --- API Endpoints ---
 
 @router.post("/challenge/generate")
-async def generate_challenge_endpoint(req: ChallengeRequest):
+async def generate_challenge_endpoint(
+    req: ChallengeRequest,
+    service: PlaygroundService = Depends(get_playground_service)
+):
     """
     Triggers Agent 3 to create a hands-on coding challenge.
     Uses RAG to ensure the challenge matches the specific curriculum topic.
     """
     try:
-        challenge = await generate_challenge(
+        challenge = await service.generate_challenge(
             user_id=req.user_id, 
             roadmap_id=req.roadmap_id,
             lesson_id=req.lesson_id, 
@@ -75,13 +76,16 @@ async def generate_challenge_endpoint(req: ChallengeRequest):
         raise HTTPException(status_code=500, detail="Failed to create coding challenge.")
 
 @router.post("/hint")
-async def get_hint_endpoint(req: HintRequest):
+async def get_hint_endpoint(
+    req: HintRequest,
+    service: PlaygroundService = Depends(get_playground_service)
+):
     """
     Provides a Socratic hint tailored to the student's current code state.
     Prevents "over-helping" by analyzing exactly where the student is stuck.
     """
     try:
-        hint = await get_personalized_hint(
+        hint = await service.get_hint(
             challenge_id=req.challenge_id, 
             user_code=req.user_code, 
             hint_level=req.hint_level,
@@ -93,13 +97,16 @@ async def get_hint_endpoint(req: HintRequest):
         raise HTTPException(status_code=500, detail="Failed to retrieve hint.")
 
 @router.post("/evaluate")
-async def evaluate_code_endpoint(req: EvaluateRequest):
+async def evaluate_code_endpoint(
+    req: EvaluateRequest,
+    service: PlaygroundService = Depends(get_playground_service)
+):
     """
     Submits student code for AI evaluation and simulated test case execution.
     Updates progress and awards XP upon successful completion.
     """
     try:
-        result = await evaluate_submission(
+        result = await service.evaluate_code(
             challenge_id=req.challenge_id, 
             user_id=req.user_id,
             user_code=req.user_code, 
@@ -111,12 +118,15 @@ async def evaluate_code_endpoint(req: EvaluateRequest):
         raise HTTPException(status_code=500, detail="Evaluation service error.")
 
 @router.post("/explain-error")
-async def explain_error_endpoint(req: ErrorExplainRequest):
+async def explain_error_endpoint(
+    req: ErrorExplainRequest,
+    service: PlaygroundService = Depends(get_playground_service)
+):
     """
     Translates cryptic compiler/runtime errors into plain English learning insights.
     """
     try:
-        explanation = await explain_error(
+        explanation = await service.explain_error(
             error_message=req.error_message, 
             code=req.code,
             language=req.language, 
@@ -128,26 +138,21 @@ async def explain_error_endpoint(req: ErrorExplainRequest):
         raise HTTPException(status_code=500, detail="Explanation service error.")
 
 @router.post("/execute")
-async def execute_code_endpoint(req: ExecuteRequest):
+async def execute_code_endpoint(
+    req: ExecuteRequest,
+    service: PlaygroundService = Depends(get_playground_service)
+):
     """
     Runs code in the Judge0 CE sandbox and returns real stdout/stderr.
     This powers the "Run" button in the Playground before a formal submission.
     """
     try:
-        result = await execute_code(
+        result = await service.execute_code(
             source_code=req.source_code,
             language=req.language,
             stdin=req.stdin,
         )
-        return {
-            "success": True,
-            "accepted": result.accepted,
-            "stdout": result.stdout,
-            "stderr": result.error_output,
-            "status": result.status_desc,
-            "time": result.time,
-            "memory": result.memory,
-        }
+        return {"success": True, **result}
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
@@ -155,14 +160,11 @@ async def execute_code_endpoint(req: ExecuteRequest):
         raise HTTPException(status_code=500, detail="Code execution service error.")
 
 @router.get("/challenge/user/{user_id}")
-async def get_user_challenges(user_id: str, roadmap_id: Optional[str] = None):
+async def get_user_challenges(
+    user_id: str, 
+    roadmap_id: Optional[str] = None,
+    service: PlaygroundService = Depends(get_playground_service)
+):
     """Retrieves a history of coding challenges attempted by the student."""
-    from app.core.database import get_supabase
-    supabase = get_supabase()
-    
-    query = supabase.table("code_challenges").select("*").eq("user_id", user_id)
-    if roadmap_id:
-        query = query.eq("roadmap_id", roadmap_id)
-        
-    result = query.order("created_at", desc=True).limit(20).execute()
-    return {"challenges": result.data or []}
+    challenges = service.get_user_challenges(user_id, roadmap_id)
+    return {"challenges": challenges}

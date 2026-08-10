@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { NotesService } from '@/services/notes.service'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -48,8 +49,6 @@ interface UseNotesReturn {
   exportMd:    (noteIds?: string[]) => string
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? ''
-
 // ── Hook ─────────────────────────────────────────────────────
 
 export function useNotes(_opts?: UseNotesOptions): UseNotesReturn {
@@ -83,9 +82,7 @@ export function useNotes(_opts?: UseNotesOptions): UseNotesReturn {
       if (opts?.skill)    params.set('skill',     opts.skill)
       if (opts?.search)   params.set('search',    opts.search)
 
-      const res = await fetch(`${API}/api/notes?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch notes')
-      const data = await res.json()
+      const data = await NotesService.fetchNotes(params)
       setNotes(data.notes ?? [])
     } catch (e) {
       console.error('useNotes fetchNotes:', e)
@@ -101,13 +98,7 @@ export function useNotes(_opts?: UseNotesOptions): UseNotesReturn {
     if (!userId) return null
     setSaving(true)
     try {
-      const res = await fetch(`${API}/api/notes`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ user_id: userId, ...data }),
-      })
-      if (!res.ok) throw new Error('Failed to create note')
-      const note: Note = await res.json()
+      const note = await NotesService.createNote({ user_id: userId, ...data })
       // Optimistic prepend
       setNotes(prev => [note, ...prev])
       return note
@@ -132,13 +123,7 @@ export function useNotes(_opts?: UseNotesOptions): UseNotesReturn {
       n.id === id ? { ...n, ...data, updated_at: new Date().toISOString() } : n
     ))
     try {
-      const res = await fetch(`${API}/api/notes/${id}?user_id=${userId}`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error('Failed to update note')
-      const updated: Note = await res.json()
+      const updated = await NotesService.updateNote(id, userId, data)
       setNotes(prev => prev.map(n => n.id === id ? updated : n))
     } catch (e) {
       console.error('useNotes update:', e)
@@ -153,7 +138,7 @@ export function useNotes(_opts?: UseNotesOptions): UseNotesReturn {
     // Optimistic remove
     setNotes(prev => prev.filter(n => n.id !== id))
     try {
-      await fetch(`${API}/api/notes/${id}?user_id=${userId}`, { method: 'DELETE' })
+      await NotesService.deleteNote(id, userId)
     } catch (e) {
       console.error('useNotes remove:', e)
     }
@@ -166,13 +151,7 @@ export function useNotes(_opts?: UseNotesOptions): UseNotesReturn {
     if (!userId || noteIds.length === 0) return null
     setSummarizing(true)
     try {
-      const res = await fetch(`${API}/api/notes/summarize`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ user_id: userId, note_ids: noteIds }),
-      })
-      if (!res.ok) throw new Error('Summarization failed')
-      const data = await res.json()
+      const data = await NotesService.summarizeNotes({ user_id: userId, note_ids: noteIds })
       // Update local ai_summary for each summarized note
       setNotes(prev => prev.map(n =>
         noteIds.includes(n.id) ? { ...n, ai_summary: data.summary } : n

@@ -4,8 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import type { LeaderboardEntry } from '@/types/week3'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { ProgressService } from '@/services/progress.service'
 
 export default function LeaderboardPage() {
   const { user }  = useAuth()
@@ -16,8 +15,7 @@ export default function LeaderboardPage() {
 
   const fetchLeaderboard = async () => {
     try {
-      const res  = await fetch(`${API}/api/progress/leaderboard?limit=50`)
-      const data = await res.json()
+      const data = await ProgressService.getLeaderboard(50)
       setEntries(data.leaderboard || [])
     } finally {
       setLoading(false)

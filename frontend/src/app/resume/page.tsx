@@ -1,59 +1,17 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useResumeReview, type ResumeReviewResponse } from '@/hooks/useResumeReview'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import SectionContainer from '@/components/ui/SectionContainer'
 import Spinner from '@/components/ui/Spinner'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-type ResumeReviewResponse = {
-  ats_score?: number
-  verdict?: string
-  missing_keywords?: string[]
-  critique?: Array<{ section?: string; issue?: string; fix?: string }>
-  top_improvement?: string
-}
-
-function ScoreRing({ score, size = 140 }: { score: number; size?: number }) {
-  const r = (size - 16) / 2
-  const circ = 2 * Math.PI * r
-  const filled = circ * (score / 100)
-  const color = score >= 75 ? '#34a853' : score >= 50 ? '#fbbc04' : '#ea4335'
-
-  return (
-    <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-app-border)" strokeWidth={10} />
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke={color} strokeWidth={10}
-        strokeDasharray={`${filled} ${circ}`}
-        strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)' }}
-      />
-    </svg>
-  )
-}
-
-function VerdictBadge({ verdict }: { verdict: string }) {
-  const map: Record<string, string> = {
-    'Ready': 'bg-brand-green/10 text-brand-green border-brand-green/30',
-    'Needs Work': 'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/30',
-    'Major Revisions': 'bg-brand-red/10 text-brand-red border-brand-red/30',
-  }
-  const cls = map[verdict] ?? 'bg-brand-blue/10 text-brand-blue border-brand-blue/30'
-  return (
-    <span className={`inline-block text-xs font-mono font-bold px-3 py-1 rounded-full border ${cls}`}>
-      {verdict}
-    </span>
-  )
-}
+import { RadialScore } from '@/components/ui/RadialScore'
+import { VerdictBadge } from '@/components/ui/VerdictBadge'
 
 function ReviewPanel({ review }: { review: ResumeReviewResponse }) {
   const score = review.ats_score ?? 0
-  const scoreColor = score >= 75 ? 'text-brand-green' : score >= 50 ? 'text-brand-yellow' : 'text-brand-red'
 
   return (
     <div className="space-y-6 animate-[fade-up_0.4s_ease_forwards]">
@@ -62,11 +20,7 @@ function ReviewPanel({ review }: { review: ResumeReviewResponse }) {
         <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/5 via-transparent to-brand-purple/5 pointer-events-none" />
         <div className="text-xs font-mono text-brand-muted uppercase tracking-widest mb-4">ATS Compatibility Score</div>
         <div className="relative inline-flex items-center justify-center mb-4">
-          <ScoreRing score={score} size={148} />
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`font-display font-black text-4xl ${scoreColor}`}>{score}</span>
-            <span className="text-xs text-brand-muted font-mono">/100</span>
-          </div>
+          <RadialScore score={score} size={148} color={score >= 75 ? '#34a853' : score >= 50 ? '#fbbc04' : '#ea4335'} />
         </div>
         {review.verdict && <VerdictBadge verdict={review.verdict} />}
       </div>
@@ -150,41 +104,13 @@ function ResumePageContent() {
   const params = useSearchParams()
   const { user, loading } = useAuth()
 
-  const [targetRole, setTargetRole] = useState('Software Engineer')
-  const [resumeText, setResumeText] = useState('')
-  const [reviewing, setReviewing] = useState(false)
-  const [review, setReview] = useState<ResumeReviewResponse | null>(null)
-  const [error, setError] = useState('')
-
   const skill = params.get('skill') || ''
   const level = params.get('level') || 'beginner'
   const roadmapId = params.get('roadmap_id') || ''
 
-  const submitResume = async () => {
-    if (!user || !roadmapId || !skill || !resumeText.trim()) return
-    setReviewing(true)
-    setError('')
-    try {
-      const res = await fetch(`${API}/api/career/resume/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id,
-          roadmap_id: roadmapId,
-          skill,
-          target_role: targetRole,
-          resume_text: resumeText,
-        }),
-      })
-      const data = await res.json()
-      if (data.success) setReview(data.review)
-      else setError(data.error || 'Review failed. Please try again.')
-    } catch {
-      setError('Network error. Check your connection.')
-    } finally {
-      setReviewing(false)
-    }
-  }
+  const { targetRole, setTargetRole, resumeText, setResumeText, reviewing, review, error, submitResume } = useResumeReview(
+    user?.id, roadmapId, skill
+  )
 
   if (loading) {
     return (

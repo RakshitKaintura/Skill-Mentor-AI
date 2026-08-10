@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { CareerService } from '@/services/career.service'
 
 interface VerifiedCertificate {
   full_name: string
@@ -18,8 +17,7 @@ export default async function VerifyCertPage({ params }: { params: Promise<{ cod
   const resolvedParams = await params
   let cert: VerifiedCertificate | null = null
   try {
-    const res  = await fetch(`${API}/api/career/certificate/verify/${resolvedParams.code}`, { cache: 'no-store' })
-    const data = await res.json() as { valid?: boolean; certificate?: VerifiedCertificate }
+    const data = await CareerService.verifyCertificate(resolvedParams.code)
     if (data.valid && data.certificate) cert = data.certificate
   } catch { /* not found */ }
 

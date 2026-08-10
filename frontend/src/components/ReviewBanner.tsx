@@ -2,8 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DueReview } from '@/types/week3'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { ProgressService } from '@/services/progress.service'
 
 interface ReviewBannerProps {
   userId:    string
@@ -16,8 +15,7 @@ export default function ReviewBanner({ userId, roadmapId }: ReviewBannerProps) {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    fetch(`${API}/api/progress/due-reviews/${userId}`)
-      .then(r => r.json())
+    ProgressService.getDueReviews(userId)
       .then(d => setReviews(d.due_reviews || []))
       .catch(() => {})
   }, [userId])

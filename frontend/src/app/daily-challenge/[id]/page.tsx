@@ -8,10 +8,9 @@ import { createClient } from '@/lib/supabase/client'
 import { DashboardNavbar } from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import CodeBlock from '@/components/lesson/CodeBlock'
+import { DailyService } from '@/services/daily.service'
 import Card from '@/components/ui/Card'
 import SectionContainer from '@/components/ui/SectionContainer'
-
-const API = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:8000'
 
 type ChallengeType = 'quiz' | 'code' | 'theory' | 'review'
 
@@ -65,26 +64,14 @@ export default function DailyChallengeDetailPage() {
     setValidationFeedback(null)
     
     try {
-      const payload = {
+      const data = await DailyService.completeChallenge({
         challenge_id: challengeId,
         user_id: user.id,
         answers: challenge.type === 'quiz' || challenge.type === 'review' ? answers : undefined,
         code: challenge.type === 'code' ? codeInput : undefined,
         theory: challenge.type === 'theory' ? theoryInput : undefined
-      }
-
-      const res = await fetch(`${API}/api/daily/challenge/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
       })
 
-      if (!res.ok) {
-        throw new Error(`Submit failed (${res.status})`)
-      }
-
-      const data = await res.json()
-      
       // If validation failed, the backend returns { success: true, completed: false, feedback: "..." }
       if (data.success && data.completed === false) {
         setValidationFeedback(data.feedback || "Your answer was incorrect. Please try again.")
@@ -139,19 +126,11 @@ export default function DailyChallengeDetailPage() {
           throw new Error('No roadmap found. Create a roadmap first.')
         }
 
-        const res = await fetch(
-          `${API}/api/daily/challenge/${user.id}?roadmap_id=${encodeURIComponent(roadmap.id)}&skill=${encodeURIComponent(roadmap.skill)}`
-        )
-
-        if (!res.ok) {
-          throw new Error(`Failed to load daily challenge (${res.status})`)
-        }
-
-        const payload = await res.json() as { success?: boolean; challenge?: DailyChallengeDetail }
-        const row = payload.challenge
+        const data = await DailyService.getDailyChallenge(user.id, roadmap.id, roadmap.skill)
+        const row = data.challenge
         const challengeId = row && row.challenge_id ? row.challenge_id : row && row.id ? row.id : null
 
-        if (!payload.success || !row || !challengeId) {
+        if (!data.success || !row || !challengeId) {
           throw new Error('Daily challenge is unavailable right now.')
         }
 

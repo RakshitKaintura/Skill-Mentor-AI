@@ -1,12 +1,12 @@
-
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
+from supabase import Client
 
 from app.core.database import get_supabase
-from app.core.gemini import get_gemini_client
+from app.services.user_notes_service import UserNotesService
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 logger = logging.getLogger(__name__)
@@ -33,6 +33,10 @@ class SummarizeRequest(BaseModel):
     note_ids: list[str] = Field(..., min_length=1, max_length=20)
 
 
+def get_user_notes_service(supabase: Client = Depends(get_supabase)) -> UserNotesService:
+    return UserNotesService(supabase)
+
+
 # ── GET /api/notes ────────────────────────────────────────────
 
 @router.get("")
@@ -42,26 +46,11 @@ async def list_notes(
     skill:     Optional[str]  = Query(None),
     search:    Optional[str]  = Query(None),
     limit:     int             = Query(50, ge=1, le=200),
+    service: UserNotesService = Depends(get_user_notes_service)
 ):
     """Return user's notes, optionally filtered."""
-    supabase = get_supabase()
     try:
-        q = supabase.table("user_notes") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .order("created_at", desc=True) \
-            .limit(limit)
-
-        if lesson_id:
-            q = q.eq("lesson_id", lesson_id)
-        if skill:
-            q = q.eq("skill", skill)
-        if search:
-            # ilike on content + topic
-            q = q.or_(f"content.ilike.%{search}%,topic.ilike.%{search}%")
-
-        result = q.execute()
-        return {"notes": result.data or [], "count": len(result.data or [])}
+        return service.list_notes(user_id, lesson_id, skill, search, limit)
     except Exception as e:
         logger.error("list_notes error: %s", e)
         raise HTTPException(500, detail="Failed to fetch notes")
@@ -70,25 +59,23 @@ async def list_notes(
 # ── POST /api/notes ───────────────────────────────────────────
 
 @router.post("", status_code=201)
-async def create_note(req: NoteCreate):
+async def create_note(
+    req: NoteCreate,
+    service: UserNotesService = Depends(get_user_notes_service)
+):
     """Create a new note anchored to a lesson step."""
-    supabase = get_supabase()
     try:
-        row = {
-            "user_id":    req.user_id,
-            "lesson_id":  req.lesson_id,
-            "roadmap_id": req.roadmap_id,
-            "skill":      req.skill,
-            "topic":      req.topic,
-            "step_index": req.step_index,
-            "step_title": req.step_title,
-            "content":    req.content.strip(),
-            "tags":       req.tags,
-        }
-        result = supabase.table("user_notes").insert(row).execute()
-        if not result.data:
-            raise RuntimeError("Insert returned no data")
-        return result.data[0]
+        return service.create_note(
+            user_id=req.user_id,
+            lesson_id=req.lesson_id,
+            roadmap_id=req.roadmap_id,
+            skill=req.skill,
+            topic=req.topic,
+            step_index=req.step_index,
+            step_title=req.step_title,
+            content=req.content,
+            tags=req.tags,
+        )
     except Exception as e:
         logger.error("create_note error: %s", e)
         raise HTTPException(500, detail="Failed to create note")
@@ -101,32 +88,11 @@ async def update_note(
     note_id: str,
     req:     NoteUpdate,
     user_id: str = Query(...),
+    service: UserNotesService = Depends(get_user_notes_service)
 ):
     """Update note content and/or tags. User must own the note."""
-    supabase = get_supabase()
     try:
-        # Ownership check
-        existing = supabase.table("user_notes") \
-            .select("id, user_id") \
-            .eq("id", note_id) \
-            .eq("user_id", user_id) \
-            .single().execute()
-        if not existing.data:
-            raise HTTPException(404, detail="Note not found")
-
-        updates: dict = {}
-        if req.content is not None:
-            updates["content"] = req.content.strip()
-        if req.tags is not None:
-            updates["tags"] = req.tags
-        if not updates:
-            raise HTTPException(400, detail="Nothing to update")
-
-        result = supabase.table("user_notes") \
-            .update(updates) \
-            .eq("id", note_id) \
-            .execute()
-        return result.data[0] if result.data else {"id": note_id, **updates}
+        return service.update_note(note_id, user_id, req.content, req.tags)
     except HTTPException:
         raise
     except Exception as e:
@@ -140,17 +106,11 @@ async def update_note(
 async def delete_note(
     note_id: str,
     user_id: str = Query(...),
+    service: UserNotesService = Depends(get_user_notes_service)
 ):
     """Delete a note. User must own the note."""
-    supabase = get_supabase()
     try:
-        result = supabase.table("user_notes") \
-            .delete() \
-            .eq("id", note_id) \
-            .eq("user_id", user_id) \
-            .execute()
-        if not result.data:
-            raise HTTPException(404, detail="Note not found or already deleted")
+        service.delete_note(note_id, user_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -161,59 +121,16 @@ async def delete_note(
 # ── POST /api/notes/summarize ─────────────────────────────────
 
 @router.post("/summarize")
-async def summarize_notes(req: SummarizeRequest):
+async def summarize_notes(
+    req: SummarizeRequest,
+    service: UserNotesService = Depends(get_user_notes_service)
+):
     """
     AI-summarize a list of notes into bullet points using Gemini.
     Writes the summary back to each note's ai_summary column.
     """
-    supabase = get_supabase()
-    client   = get_gemini_client()
-
     try:
-        # Fetch and validate ownership
-        result = supabase.table("user_notes") \
-            .select("id, topic, step_title, content") \
-            .in_("id", req.note_ids) \
-            .eq("user_id", req.user_id) \
-            .execute()
-
-        notes = result.data or []
-        if not notes:
-            raise HTTPException(404, detail="No accessible notes found for the given IDs")
-
-        # Build prompt context
-        note_blocks = []
-        for n in notes:
-            ctx = f"Step: {n.get('step_title') or 'General'}\n{n['content']}"
-            note_blocks.append(ctx)
-
-        prompt = (
-            "You are a study assistant helping a student review their notes.\n"
-            "Summarize the following study notes into 5–7 clear, concise bullet points.\n"
-            "Focus on key concepts, definitions, patterns, and anything worth memorizing.\n"
-            "Format each bullet starting with '• '.\n\n"
-            "Topic: " + (notes[0].get("topic") or "Unknown") + "\n\n"
-            "Notes:\n" + "\n\n---\n\n".join(note_blocks)
-        )
-
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
-            contents=prompt,
-        )
-        summary = response.text.strip()
-
-        # Persist summary back to each note
-        supabase.table("user_notes") \
-            .update({"ai_summary": summary}) \
-            .in_("id", [n["id"] for n in notes]) \
-            .execute()
-
-        return {
-            "summary":  summary,
-            "note_ids": [n["id"] for n in notes],
-            "count":    len(notes),
-        }
-
+        return await service.summarize_notes(req.user_id, req.note_ids)
     except HTTPException:
         raise
     except Exception as e:

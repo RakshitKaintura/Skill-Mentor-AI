@@ -5,8 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import DashboardNavbar from '@/components/layout/DashboardNavbar'
 import Spinner from '@/components/ui/Spinner'
 import type { DueReview } from '@/types/week3'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { ProgressService } from '@/services/progress.service'
 
 export default function SpacedReviewPage() {
   const router   = useRouter()
@@ -17,8 +16,7 @@ export default function SpacedReviewPage() {
   const fetchReviews = useCallback(async () => {
     if (!user?.id) return
     try {
-      const res  = await fetch(`${API}/api/progress/due-reviews/${user.id}`)
-      const data = await res.json()
+      const data = await ProgressService.getDueReviews(user.id)
       setReviews(data.due_reviews || [])
     } finally {
       setLoading(false)

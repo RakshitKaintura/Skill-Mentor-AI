@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { AnalyticsService } from '@/services/analytics.service'
 
 interface TrackPayload {
   event_data?: Record<string, unknown>
@@ -25,16 +26,12 @@ export function useAnalytics() {
 
   const track = useCallback(async (eventType: string, payload: TrackPayload = {}) => {
     try {
-      await fetch('/api/analytics/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_type: eventType,
-          user_id: user?.id ?? null,
-          event_data: payload.event_data ?? {},
-          page: payload.page ?? (typeof window !== 'undefined' ? window.location.pathname : null),
-          session_id: payload.session_id ?? sessionId,
-        }),
+      await AnalyticsService.trackEvent({
+        event_type: eventType,
+        user_id: user?.id ?? undefined,
+        event_data: payload.event_data ?? {},
+        page: payload.page ?? (typeof window !== 'undefined' ? window.location.pathname : undefined),
+        session_id: payload.session_id ?? sessionId,
       })
     } catch {
       // Analytics must never break UX.

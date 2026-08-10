@@ -1,17 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAnalytics } from '@/hooks/useAnalytics'
 import { useToast } from '@/components/ui/Toast'
 import { AgenticTerminal } from '@/components/ui/AgenticTerminal'
 import { ArrowRight, ArrowLeft, CheckCircle, Loader2, Upload } from 'lucide-react'
+import { RoadmapService } from '@/services/roadmap.service'
 
 type Step = 'skill' | 'level' | 'goal' | 'time' | 'upload' | 'generating'
 
 interface Data {
-  skill: string; level: string; goal: string; hours: string; uploadedFile: string | null
+  skill: string
+  level: string
+  goal: string
+  hours: string
+  days?: string
+  uploadedFile: string | null
 }
 
 const POPULAR_SKILLS = [
@@ -50,6 +56,7 @@ function OnboardingContent() {
   const toast    = useToast()
   const { track } = useAnalytics()
   const searchParams = useSearchParams()
+  const router       = useRouter()
   const isNewSkillMode = searchParams.get('mode') === 'new-skill'
 
   const [step, setStep]     = useState<Step>('skill')
@@ -92,21 +99,22 @@ function OnboardingContent() {
       const user = session?.user;
       if (!user) throw new Error('Authentication lost. Please log in again.');
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roadmap/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id, 
-          skill: data.skill, 
-          level: data.level,
-          goal: data.goal, 
-          hours_per_day: parseFloat(data.hours || "1"),
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ detail: 'Backend generation failed' }));
-        throw new Error(errData.detail || 'The AI architect encountered an error.');
+      try {
+        const res = await RoadmapService.generateRoadmap({
+            user_id: user.id, 
+            skill: data.skill, 
+            level: data.level,
+            goal: data.goal, 
+            hours_per_day: parseFloat(data.hours || "1"),
+            days_per_week: parseFloat(data.days || "3")
+        })
+        if (res.success) {
+            router.push(`/dashboard?roadmap_id=${res.roadmap.id}`)
+        } else {
+            throw new Error(res.detail || 'The AI architect encountered an error.');
+        }
+      } catch (errData: any) {
+        throw new Error(errData.detail || errData.message || 'The AI architect encountered an error.');
       }
 
       void track('roadmap_generated', {

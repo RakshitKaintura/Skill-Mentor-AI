@@ -6,6 +6,7 @@ import { Loader2, Send, X, Sparkles, BookOpen, Lightbulb, Code2 } from 'lucide-r
 import { CodeBlock } from '@/components/lesson/CodeBlock'
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 import { motion, AnimatePresence } from 'framer-motion'
+import { LessonService } from '@/services/lesson.service'
 
 interface DoubtPanelProps {
   topic: string
@@ -45,14 +46,14 @@ export function DoubtPanel({ topic, skill, lessonId, onClose, onAskStart, onAskC
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lesson/doubt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, lesson_id: lessonId, topic, skill, question: q }),
-      })
-
-      if (!res.ok) throw new Error('Failed to get answer')
-      const data: DoubtResult = await res.json()
+      const data = await LessonService.askDoubt({
+        user_id: user.id, 
+        lesson_id: lessonId, 
+        topic, 
+        skill, 
+        question: q 
+      });
+      
       setResult(data)
       setHistory(h => [...h, { q, r: data }])
       onAskComplete?.(q, data)
