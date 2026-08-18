@@ -19,6 +19,20 @@
 
 ---
 
+<p align="center">
+  <a href="https://skill-mentor-ai-nu.vercel.app/">
+    <img src="https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel" alt="Live Demo">
+  </a>
+  <a href="https://skill-mentor-ai.onrender.com/">
+    <img src="https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render" alt="Backend">
+  </a>
+</p>
+
+## 🌐 Live Demo
+
+- **Frontend (Vercel):** https://skill-mentor-ai-nu.vercel.app/
+- **Backend API (Render):** https://skill-mentor-ai.onrender.com
+- **API Health Check:** https://skill-mentor-ai.onrender.com/health
 ## ✨ Core Features & Learner Experience
 
 - 🗺️ **Personalized Roadmaps**: AI-generated skill roadmaps dynamically planned based on learner level, ultimate goal, and available study time.
