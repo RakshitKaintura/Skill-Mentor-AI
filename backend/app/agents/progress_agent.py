@@ -33,7 +33,7 @@ def update_topic_mastery(user_id: str, topic: str, skill: str, score_pct: float)
     try:
         supabase = get_supabase()
 
-        score = max(0.0, min(100.0, float(score_pct)))
+        score = max(0.0, min(100.0, score_pct))
         progress_res = (
             supabase.table("user_progress")
             .select("topic_mastery, quizzes_completed")
@@ -42,7 +42,7 @@ def update_topic_mastery(user_id: str, topic: str, skill: str, score_pct: float)
             .execute()
         )
 
-        progress_row = progress_res.data or {}
+        progress_row = progress_res.data if isinstance(progress_res.data, dict) else {}
         mastery = progress_row.get("topic_mastery") or {}
         if not isinstance(mastery, dict):
             mastery = {}
@@ -57,9 +57,10 @@ def update_topic_mastery(user_id: str, topic: str, skill: str, score_pct: float)
         weak_topics = [k for k, v in mastery.items() if isinstance(v, (int, float)) and v < 65]
         strong_topics = [k for k, v in mastery.items() if isinstance(v, (int, float)) and v >= 85]
 
-        quizzes_completed = int(progress_row.get("quizzes_completed") or 0) + 1
+        quizzes_completed_raw = progress_row.get("quizzes_completed")
+        quizzes_completed = int(quizzes_completed_raw) + 1 if isinstance(quizzes_completed_raw, (int, float, str)) and str(quizzes_completed_raw).isdigit() else 1
 
-        payload = {
+        payload: dict[str, Any] = {
             "topic_mastery": mastery,
             "weak_topics": weak_topics,
             "strong_topics": strong_topics,
@@ -69,7 +70,7 @@ def update_topic_mastery(user_id: str, topic: str, skill: str, score_pct: float)
         if progress_res.data:
             supabase.table("user_progress").update(payload).eq("user_id", user_id).execute()
         else:
-            payload.update({"user_id": user_id})
+            payload["user_id"] = user_id
             supabase.table("user_progress").insert(payload).execute()
 
     except Exception as e:
@@ -86,7 +87,7 @@ async def get_due_reviews(user_id: str) -> list[dict[str, Any]]:
     try:
         rpc_res = supabase.rpc("get_due_reviews", {"p_user_id": user_id}).execute()
         if rpc_res.data is not None:
-            return rpc_res.data
+            return [dict(x) for x in rpc_res.data if isinstance(x, dict)] if isinstance(rpc_res.data, list) else []
     except Exception as rpc_err:
         logger.info("get_due_reviews RPC unavailable; falling back to table query: %s", rpc_err)
 
@@ -99,8 +100,7 @@ async def get_due_reviews(user_id: str) -> list[dict[str, Any]]:
         .limit(10)
         .execute()
     )
-
-    return fallback.data or []
+    return [dict(x) for x in fallback.data if isinstance(x, dict)] if isinstance(fallback.data, list) else []
 
 @retry(
     stop=stop_after_attempt(3), 
@@ -142,9 +142,9 @@ async def generate_report_card(
         .eq("user_id", user_id).single().execute()
 
     # 2. Metric Calculation Logic
-    lessons_done = sum(1 for l in (lessons.data or []) if l.get("completed"))
+    lessons_done = sum(1 for l in (lessons.data or []) if isinstance(l, dict) and l.get("completed"))
     quizzes_done = len(quizzes.data or [])
-    challenges_done = sum(1 for c in (challenges.data or []) if c.get("passed"))
+    challenges_done = sum(1 for c in (challenges.data or []) if isinstance(c, dict) and c.get("passed"))
     
     avg_score = 0.0
     if quizzes.data:
@@ -173,17 +173,20 @@ async def generate_report_card(
             pct = (score / _quiz_denominator(row)) * 100
             return max(0.0, min(pct, 100.0))
 
-        avg_score = sum(_quiz_percentage(q) for q in quizzes.data) / quizzes_done
+        avg_score = sum(_quiz_percentage(q) for q in quizzes.data if isinstance(q, dict)) / quizzes_done
 
     # Extract behavioral metrics
-    streak = progress.data.get("streak_days", 0) if progress.data else 0
-    xp_total = progress.data.get("xp_points", 0) if progress.data else 0
-    topic_mastery = progress.data.get("topic_mastery", {}) if progress.data else {}
-    skill = roadmap.data.get("skill", "General") if roadmap.data else "General"
+    prog_data = progress.data if isinstance(progress.data, dict) else {}
+    streak = prog_data.get("streak_days", 0)
+    xp_total = prog_data.get("xp_points", 0)
+    topic_mastery = prog_data.get("topic_mastery", {})
+    topic_mastery_dict = topic_mastery if isinstance(topic_mastery, dict) else {}
+    rm_data = roadmap.data if isinstance(roadmap.data, dict) else {}
+    skill = str(rm_data.get("skill", "General"))
 
     # Identify mastery trends
-    weak_topics = [t for t, v in topic_mastery.items() if isinstance(v, (int, float)) and v < 65]
-    strong_topics = [t for t, v in topic_mastery.items() if isinstance(v, (int, float)) and v >= 85]
+    weak_topics = [t for t, v in topic_mastery_dict.items() if isinstance(v, (int, float)) and v < 65]
+    strong_topics = [t for t, v in topic_mastery_dict.items() if isinstance(v, (int, float)) and v >= 85]
 
     # 3. LLM Synthesis with Gemini 2.0 Flash
     prompt = f"""
@@ -220,7 +223,7 @@ async def generate_report_card(
     )
 
     try:
-        report_data = json.loads(response.text)
+        report_data = json.loads(response.text or "{}")
     except Exception as e:
         logger.error(f"Report Generation Error: {e}")
         raise ValueError("AI failed to generate a valid report card structure.")

@@ -213,36 +213,45 @@ async def complete_lesson(user_id: str, lesson_id: str, time_spent: int = 0) -> 
     # we determine the next topic based on the total number of completed lessons.
     roadmap_id = None
     lesson_result = supabase.table("lessons").select("roadmap_id").eq("id", lesson_id).eq("user_id", user_id).single().execute()
-    if lesson_result.data:
-        roadmap_id = lesson_result.data.get("roadmap_id")
+    lesson_data = lesson_result.data if isinstance(lesson_result.data, dict) else {}
+    roadmap_id = lesson_data.get("roadmap_id")
         
     if roadmap_id:
         roadmap_res = supabase.table("roadmaps").select("phases").eq("id", roadmap_id).eq("user_id", user_id).single().execute()
-        if roadmap_res.data and roadmap_res.data.get("phases"):
-            phases = roadmap_res.data["phases"]
+        roadmap_res_data = roadmap_res.data if isinstance(roadmap_res.data, dict) else {}
+        if roadmap_res_data and roadmap_res_data.get("phases"):
+            phases = roadmap_res_data["phases"]
             
             # Flatten the predefined topics into a sequential curriculum
             curriculum = []
-            for p in phases:
-                p_name = p.get("name", "")
-                weeks = p.get("duration_weeks", p.get("weeks", []))
-                p_topics = p.get("topics", [])
-                
-                num_topics = len(p_topics)
-                num_weeks = len(weeks)
-                
-                for i, t in enumerate(p_topics):
-                    # Distribute topics evenly across the weeks assigned to this phase
-                    assigned_week = 1
-                    if num_weeks > 0:
-                        week_idx = (i * num_weeks) // max(1, num_topics)
-                        assigned_week = weeks[week_idx]
+            if isinstance(phases, list):
+                for p in phases:
+                    if not isinstance(p, dict):
+                        continue
+                    p_name = str(p.get("name", ""))
+                    weeks = p.get("duration_weeks", p.get("weeks", []))
+                    if not isinstance(weeks, list):
+                        weeks = []
+                    p_topics = p.get("topics", [])
+                    if not isinstance(p_topics, list):
+                        p_topics = []
                         
-                    curriculum.append({
-                        "topic": t,
-                        "phase": p_name,
-                        "week": assigned_week
-                    })
+                    num_topics = len(p_topics)
+                    num_weeks = len(weeks)
+                    
+                    for i, t in enumerate(p_topics):
+                        # Distribute topics evenly across the weeks assigned to this phase
+                        assigned_week = 1
+                        if num_weeks > 0:
+                            week_idx = (i * num_weeks) // max(1, num_topics)
+                            val = weeks[week_idx]
+                            assigned_week = int(val) if isinstance(val, (int, float, str)) and str(val).isdigit() else 1
+                            
+                        curriculum.append({
+                            "topic": str(t),
+                            "phase": p_name,
+                            "week": assigned_week
+                        })
             
             # Count how many lessons this user has completed for this roadmap
             completed_res = supabase.table("lessons").select("id").eq("roadmap_id", roadmap_id).eq("completed", True).execute()

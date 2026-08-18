@@ -145,9 +145,14 @@ async def complete_daily_challenge(
 
     challenge_type = ch_data.get("type")
     content = ch_data.get("content", {})
+    if not isinstance(content, dict):
+        content = {}
+
+    if submission is not None and not isinstance(submission, dict):
+        submission = {}
+
     xp = ch_data.get("xp_awarded", 50) or 50
-    if isinstance(content, dict):
-        xp = content.get("xp_reward", 50)
+    xp = content.get("xp_reward", 50)
 
     # Validation Logic
     if submission:

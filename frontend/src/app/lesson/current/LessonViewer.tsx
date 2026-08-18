@@ -17,7 +17,7 @@ import { FocusTimer }    from '@/components/ui/FocusTimer'
 import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft, Mic, MessageCircle, FileText, Timer,
-  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, HelpCircle
+  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight
 } from 'lucide-react'
 
 interface Props {
