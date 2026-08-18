@@ -32,6 +32,7 @@ export function useVoice(options: UseVoiceOptions) {
   const [activeVisual, setActiveVisual]       = useState<string | null>(null)
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null)
+  const selectedVoiceURIRef = useRef<string | null>(null)
 
   const wsRef         = useRef<WebSocket | null>(null)
   const mediaRecorder = useRef<MediaRecorder | null>(null)
@@ -107,8 +108,9 @@ export function useVoice(options: UseVoiceOptions) {
     const utterance = new SpeechSynthesisUtterance(cleanText)
     
     let voiceToUse = null
-    if (selectedVoiceURI) {
-      voiceToUse = availableVoices.find(v => v.voiceURI === selectedVoiceURI)
+    const currentURI = selectedVoiceURIRef.current
+    if (currentURI) {
+      voiceToUse = window.speechSynthesis.getVoices().find(v => v.voiceURI === currentURI)
     }
     if (!voiceToUse) {
       voiceToUse = pickPreferredFemaleVoice()
@@ -316,7 +318,10 @@ export function useVoice(options: UseVoiceOptions) {
     activeVisual,
     availableVoices,
     selectedVoiceURI,
-    setSelectedVoiceURI,
+    setSelectedVoiceURI: (uri: string) => {
+      setSelectedVoiceURI(uri)
+      selectedVoiceURIRef.current = uri
+    },
     start,
     stop,
     pause,

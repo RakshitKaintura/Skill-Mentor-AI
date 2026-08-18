@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Play, Pause, Mic, MicOff, Send,
   BookOpen, Lightbulb, MessageCircle, Bookmark,
-  ChevronDown, ChevronUp, Volume2, Zap,
+  ChevronDown, ChevronUp, Volume2, Zap, Maximize2, X
 } from 'lucide-react'
 import { AIOrb } from '@/components/voice/AIOrb'
 import { VoiceVisualizer } from '@/components/voice/VoiceVisualizer'
@@ -51,6 +51,7 @@ export function VoiceLessonPanel({
   socraticMode, setSocraticMode,
 }: Props) {
   const [transcriptOpen, setTranscriptOpen] = useState(true)
+  const [whiteboardExpanded, setWhiteboardExpanded] = useState(false)
   const [savedConcepts] = useState<string[]>([])
   const isActive = voice.state !== 'idle' && voice.state !== 'error'
 
@@ -331,12 +332,19 @@ export function VoiceLessonPanel({
             {/* Hint text or Visual Sync */}
             {voice.activeVisual ? (
               <div className="p-4" style={{ borderBottom: '1px solid var(--color-app-border)' }}>
-                <div className="rounded-xl overflow-hidden text-sm"
+                <div className="rounded-xl overflow-hidden text-sm flex flex-col max-h-[400px]"
                   style={{ background: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
-                  <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest bg-black/10 border-b border-black/5" style={{ color: 'var(--color-app-text-secondary)' }}>
-                    AI Whiteboard
+                  <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest bg-black/10 border-b border-black/5 flex items-center justify-between" style={{ color: 'var(--color-app-text-secondary)' }}>
+                    <span>AI Whiteboard</span>
+                    <button 
+                      onClick={() => setWhiteboardExpanded(true)}
+                      className="p-1 hover:bg-black/10 rounded transition-colors"
+                      title="Expand Whiteboard"
+                    >
+                      <Maximize2 size={12} />
+                    </button>
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 overflow-y-auto">
                     <MarkdownRenderer content={voice.activeVisual} />
                   </div>
                 </div>
@@ -462,6 +470,52 @@ export function VoiceLessonPanel({
         </div>
 
       </div>
+
+      {/* ── EXPANDED WHITEBOARD MODAL ───────────────────────── */}
+      <AnimatePresence>
+        {whiteboardExpanded && voice.activeVisual && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12"
+            style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-4xl max-h-[85vh] rounded-2xl flex flex-col overflow-hidden"
+              style={{ 
+                background: 'var(--color-app-surface)', 
+                border: '1px solid var(--color-app-border)',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.4)'
+              }}
+            >
+              <div className="flex flex-shrink-0 items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--color-app-border)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(79,255,160,0.1)' }}>
+                    <BookOpen size={16} style={{ color: '#4FFFA0' }} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg" style={{ color: 'var(--color-app-text-primary)' }}>AI Whiteboard</h3>
+                    <p className="text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>Interactive Visual Sync</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setWhiteboardExpanded(false)}
+                  className="p-2 rounded-full hover:bg-white/5 transition-colors"
+                >
+                  <X size={20} style={{ color: 'var(--color-app-text-secondary)' }} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                <MarkdownRenderer content={voice.activeVisual} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

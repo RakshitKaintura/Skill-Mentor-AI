@@ -160,23 +160,16 @@ class VoiceService:
             # Remove the visual blocks from the text that will be spoken
             text = re.sub(r'\[VISUAL:\s*.*?\s*\]', '', text, flags=re.DOTALL).strip()
 
-            # Split by sentence-ending punctuation for smoother transcript updates.
-            buffer = text
-            while any(p in buffer for p in [".", "?", "!"]):
-                nearest = [i for i in [buffer.find("."), buffer.find("?"), buffer.find("!")] if i != -1]
-                idx = min(nearest) if nearest else -1
-                if idx == -1:
-                    break
-                sentence = buffer[:idx + 1].strip()
-                buffer = buffer[idx + 1:].strip()
+            # Split by sentence-ending punctuation followed by whitespace for smoother transcript updates.
+            # This prevents splitting on numbers like 0.7 or inside code blocks.
+            sentences = re.split(r'(?<=[.!?])\s+', text)
+            for sentence in sentences:
+                sentence = sentence.strip()
                 if sentence:
                     await websocket.send_text(json.dumps({
                         "type": "transcript_ai",
                         "text": sentence,
                     }))
-
-            if buffer:
-                await websocket.send_text(json.dumps({"type": "transcript_ai", "text": buffer}))
 
         except (RuntimeError, GenAIError) as e:
             print(f"Voice processing failed: {e}")
@@ -201,7 +194,7 @@ class VoiceService:
 
         for attempt in range(1, attempts + 1):
             try:
-                return await chat.send_message_async(prompt)
+                return await chat.send_message(prompt)
             except Exception as exc:
                 last_exc = exc
                 if not self._is_transient_model_error(exc) or attempt == attempts:
