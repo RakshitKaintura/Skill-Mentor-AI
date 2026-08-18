@@ -108,10 +108,10 @@ function OnboardingContent() {
             hours_per_day: parseFloat(data.hours || "1"),
             days_per_week: parseFloat(data.days || "3")
         })
-        if (res.success) {
-            router.push(`/dashboard?roadmap_id=${res.roadmap.id}`)
+        if (res.roadmap_id) {
+            router.push(`/dashboard?roadmap_id=${res.roadmap_id}`)
         } else {
-            throw new Error(res.detail || 'The AI architect encountered an error.');
+            throw new Error(res.message || 'The AI architect encountered an error.');
         }
       } catch (errData: any) {
         throw new Error(errData.detail || errData.message || 'The AI architect encountered an error.');
@@ -160,7 +160,7 @@ function OnboardingContent() {
         <div className="text-center mb-8">
           <span className="font-display font-black text-xl gradient-text">SkillMentor AI</span>
           {isNewSkillMode && (
-            <p className="mt-2 text-xs" style={{ color: '#6B7A99' }}>
+            <p className="mt-2 text-xs text-app-text-secondary">
               Add a new skill roadmap without affecting your existing skills.
             </p>
           )}
@@ -168,13 +168,13 @@ function OnboardingContent() {
 
         {step !== 'generating' && (
           <div className="mb-10">
-            <div className="flex justify-between text-xs mb-2" style={{ color: '#6B7A99' }}>
+            <div className="flex justify-between text-xs mb-2 text-app-text-secondary">
               <span>{isNewSkillMode ? 'Adding your new skill path' : 'Setting up your learning path'}</span>
               <span>{stepIdx + 1} / {STEPS.length}</span>
             </div>
-            <div className="h-1 rounded-full" style={{ background: '#1E2A42' }}>
-              <div className="h-1 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#4FFFA0,#5B8EFF)' }} />
+            <div className="h-1 rounded-full bg-app-border">
+              <div className="h-1 rounded-full transition-all duration-500 bg-app-primary"
+                style={{ width: `${progress}%` }} />
             </div>
           </div>
         )}
@@ -185,7 +185,7 @@ function OnboardingContent() {
             <h2 className="font-display font-black text-3xl mb-2" style={{ letterSpacing: '-1px' }}>
               {isNewSkillMode ? 'What new skill do you want to add?' : 'What do you want to learn?'}
             </h2>
-            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>
+            <p className="text-sm mb-8 text-app-text-secondary">
               {isNewSkillMode
                 ? 'This creates a separate roadmap for your next skill.'
                 : 'Type any skill — programming, design, data science, anything.'}
@@ -193,24 +193,21 @@ function OnboardingContent() {
             <input type="text" autoFocus value={data.skill}
               onChange={e => setData(d => ({ ...d, skill: e.target.value }))}
               placeholder="e.g. JavaScript, Python, React…"
-              className="w-full px-4 py-4 text-base rounded-sm mb-5"
-              style={{ background: '#0E1420', borderColor: '#1E2A42', color: '#E8EDF8', fontSize: '16px' }}
+              className="w-full px-5 py-4 text-base rounded-xl mb-5 neo-surface border-app-border text-app-text-primary focus:ring-2 focus:ring-app-primary/50 transition-all shadow-sm"
               onKeyDown={e => e.key === 'Enter' && data.skill.trim() && setStep('level')}
             />
             <div className="flex flex-wrap gap-2 mb-8">
               {POPULAR_SKILLS.map(s => (
                 <button key={s} onClick={() => setData(d => ({ ...d, skill: s }))}
-                  className="px-3 py-1.5 rounded-sm text-xs border transition-all"
-                  style={{
-                    borderColor: data.skill === s ? '#4FFFA0' : '#1E2A42',
-                    background:  data.skill === s ? 'rgba(79,255,160,0.1)' : '#0E1420',
-                    color:       data.skill === s ? '#4FFFA0' : '#6B7A99',
-                  }}>{s}</button>
+                  className={`px-4 py-2 rounded-full text-xs border transition-all font-medium ${
+                    data.skill === s 
+                      ? 'border-app-primary bg-app-primary/10 text-app-primary' 
+                      : 'border-app-border bg-app-surface text-app-text-secondary hover:bg-app-border/50 hover:text-app-text-primary'
+                  }`}>{s}</button>
               ))}
             </div>
             <button onClick={() => setStep('level')} disabled={!data.skill.trim()}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-sm font-display font-bold text-sm disabled:opacity-40"
-              style={{ background: '#4FFFA0', color: '#080B14' }}>
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-display font-bold text-sm bg-app-primary text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md">
               Continue <ArrowRight size={15} />
             </button>
           </div>
@@ -222,35 +219,31 @@ function OnboardingContent() {
             <h2 className="font-display font-black text-3xl mb-2" style={{ letterSpacing: '-1px' }}>
               What&apos;s your current level?
             </h2>
-            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>Be honest — the AI adapts completely to where you are.</p>
+            <p className="text-sm mb-8 text-app-text-secondary">Be honest — the AI adapts completely to where you are.</p>
             <div className="flex flex-col gap-3 mb-8">
               {LEVELS.map(l => (
                 <button key={l.value} onClick={() => setData(d => ({ ...d, level: l.value }))}
-                  className="flex items-center justify-between gap-4 p-5 rounded-sm border text-left transition-all"
-                  style={{
-                    borderColor: data.level === l.value ? '#4FFFA0' : '#1E2A42',
-                    background:  data.level === l.value ? 'rgba(79,255,160,0.06)' : '#0E1420',
-                  }}>
+                  className={`flex items-center justify-between gap-4 p-5 rounded-xl border text-left transition-all ${
+                    data.level === l.value ? 'border-app-primary bg-app-primary/5' : 'border-app-border bg-app-surface hover:border-app-primary/50'
+                  }`}>
                   <div className="flex items-center gap-4">
                     <span className="text-2xl">{l.emoji}</span>
                     <div>
                       <div className="font-display font-bold text-sm">{l.label}</div>
-                      <div className="text-xs mt-0.5" style={{ color: '#6B7A99' }}>{l.desc}</div>
+                      <div className="text-xs mt-0.5 text-app-text-secondary">{l.desc}</div>
                     </div>
                   </div>
-                  {data.level === l.value && <CheckCircle size={17} style={{ color: '#4FFFA0', flexShrink: 0 }} />}
+                  {data.level === l.value && <CheckCircle size={17} className="text-app-primary shrink-0" />}
                 </button>
               ))}
             </div>
             <div className="flex gap-3">
               <button onClick={() => setStep('skill')}
-                className="flex items-center gap-2 px-6 py-4 rounded-sm text-sm border"
-                style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+                className="flex items-center gap-2 px-6 py-4 rounded-xl text-sm border border-app-border text-app-text-secondary hover:bg-app-surface transition-all">
                 <ArrowLeft size={14} /> Back
               </button>
               <button onClick={() => setStep('goal')} disabled={!data.level}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-sm font-display font-bold text-sm disabled:opacity-40"
-                style={{ background: '#4FFFA0', color: '#080B14' }}>
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl font-display font-bold text-sm bg-app-primary text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md">
                 Continue <ArrowRight size={15} />
               </button>
             </div>
@@ -263,31 +256,27 @@ function OnboardingContent() {
             <h2 className="font-display font-black text-3xl mb-2" style={{ letterSpacing: '-1px' }}>
               What&apos;s your goal?
             </h2>
-            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>This helps the AI focus your roadmap on what matters for you.</p>
+            <p className="text-sm mb-8 text-app-text-secondary">This helps the AI focus your roadmap on what matters for you.</p>
             <div className="flex flex-col gap-3 mb-8">
               {GOALS.map(g => (
                 <button key={g.value} onClick={() => setData(d => ({ ...d, goal: g.value }))}
-                  className="flex items-center justify-between px-5 py-4 rounded-sm border text-left transition-all"
-                  style={{
-                    borderColor: data.goal === g.value ? '#4FFFA0' : '#1E2A42',
-                    background:  data.goal === g.value ? 'rgba(79,255,160,0.06)' : '#0E1420',
-                  }}>
+                  className={`flex items-center justify-between px-5 py-4 rounded-xl border text-left transition-all ${
+                    data.goal === g.value ? 'border-app-primary bg-app-primary/5' : 'border-app-border bg-app-surface hover:border-app-primary/50'
+                  }`}>
                   <span className="flex items-center gap-3 font-display font-bold text-sm">
                     <span className="text-xl">{g.emoji}</span>{g.label}
                   </span>
-                  {data.goal === g.value && <CheckCircle size={16} style={{ color: '#4FFFA0' }} />}
+                  {data.goal === g.value && <CheckCircle size={16} className="text-app-primary" />}
                 </button>
               ))}
             </div>
             <div className="flex gap-3">
               <button onClick={() => setStep('level')}
-                className="flex items-center gap-2 px-6 py-4 rounded-sm text-sm border"
-                style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+                className="flex items-center gap-2 px-6 py-4 rounded-xl text-sm border border-app-border text-app-text-secondary hover:bg-app-surface transition-all">
                 <ArrowLeft size={14} /> Back
               </button>
               <button onClick={() => setStep('time')} disabled={!data.goal}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-sm font-display font-bold text-sm disabled:opacity-40"
-                style={{ background: '#4FFFA0', color: '#080B14' }}>
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl font-display font-bold text-sm bg-app-primary text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md">
                 Continue <ArrowRight size={15} />
               </button>
             </div>
@@ -300,29 +289,25 @@ function OnboardingContent() {
             <h2 className="font-display font-black text-3xl mb-2" style={{ letterSpacing: '-1px' }}>
               How much time daily?
             </h2>
-            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>The AI builds a realistic schedule around your availability.</p>
+            <p className="text-sm mb-8 text-app-text-secondary">The AI builds a realistic schedule around your availability.</p>
             <div className="grid grid-cols-2 gap-3 mb-8">
               {TIME_OPTIONS.map(t => (
                 <button key={t.value} onClick={() => setData(d => ({ ...d, hours: t.value }))}
-                  className="flex flex-col items-center py-6 rounded-sm border transition-all"
-                  style={{
-                    borderColor: data.hours === t.value ? '#4FFFA0' : '#1E2A42',
-                    background:  data.hours === t.value ? 'rgba(79,255,160,0.06)' : '#0E1420',
-                  }}>
+                  className={`flex flex-col items-center py-6 rounded-xl border transition-all ${
+                    data.hours === t.value ? 'border-app-primary bg-app-primary/5' : 'border-app-border bg-app-surface hover:border-app-primary/50'
+                  }`}>
                   <span className="font-display font-bold text-sm mb-1">{t.label}</span>
-                  <span className="text-xs" style={{ color: '#6B7A99' }}>{t.desc}</span>
+                  <span className="text-xs text-app-text-secondary">{t.desc}</span>
                 </button>
               ))}
             </div>
             <div className="flex gap-3">
               <button onClick={() => setStep('goal')}
-                className="flex items-center gap-2 px-6 py-4 rounded-sm text-sm border"
-                style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+                className="flex items-center gap-2 px-6 py-4 rounded-xl text-sm border border-app-border text-app-text-secondary hover:bg-app-surface transition-all">
                 <ArrowLeft size={14} /> Back
               </button>
               <button onClick={() => setStep('upload')} disabled={!data.hours}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-sm font-display font-bold text-sm disabled:opacity-40"
-                style={{ background: '#4FFFA0', color: '#080B14' }}>
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl font-display font-bold text-sm bg-app-primary text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md">
                 Continue <ArrowRight size={15} />
               </button>
             </div>
@@ -334,40 +319,36 @@ function OnboardingContent() {
           <div className="animate-fade-up">
             <h2 className="font-display font-black text-3xl mb-2" style={{ letterSpacing: '-1px' }}>
               Upload your books{' '}
-              <span style={{ color: '#6B7A99', fontSize: '18px', fontWeight: 400 }}>(optional)</span>
+              <span className="text-[18px] font-normal text-app-text-secondary">(optional)</span>
             </h2>
-            <p className="text-sm mb-8" style={{ color: '#6B7A99' }}>
+            <p className="text-sm mb-8 text-app-text-secondary">
               Upload your university textbook or syllabus. The AI will teach from your exact curriculum.
             </p>
             <label className="block mb-5 cursor-pointer">
-              <div className="border-2 border-dashed rounded-sm p-10 text-center transition-all"
-                style={{
-                  borderColor: data.uploadedFile ? '#4FFFA0' : uploading ? '#5B8EFF' : '#1E2A42',
-                  background: '#0E1420',
-                }}>
+              <div className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${
+                  data.uploadedFile ? 'border-brand-green bg-brand-green/5' : uploading ? 'border-brand-blue bg-brand-blue/5' : 'border-app-border bg-app-surface hover:border-app-primary/50'
+                }`}>
                 {data.uploadedFile ? (
-                  <><CheckCircle size={36} className="mx-auto mb-3" style={{ color: '#4FFFA0' }} />
-                    <p className="font-display font-bold text-sm" style={{ color: '#4FFFA0' }}>✅ {data.uploadedFile}</p></>
+                  <><CheckCircle size={36} className="mx-auto mb-3 text-brand-green" />
+                    <p className="font-display font-bold text-sm text-brand-green">✅ {data.uploadedFile}</p></>
                 ) : uploading ? (
-                  <><Loader2 size={36} className="animate-spin mx-auto mb-3" style={{ color: '#5B8EFF' }} />
-                    <p className="text-sm" style={{ color: '#6B7A99' }}>Processing your book…</p></>
+                  <><Loader2 size={36} className="animate-spin mx-auto mb-3 text-brand-blue" />
+                    <p className="text-sm text-app-text-secondary">Processing your book…</p></>
                 ) : (
-                  <><Upload size={36} className="mx-auto mb-3" style={{ color: '#6B7A99' }} />
+                  <><Upload size={36} className="mx-auto mb-3 text-app-text-secondary" />
                     <p className="font-display font-bold text-sm mb-1">Drop your PDF here</p>
-                    <p className="text-xs" style={{ color: '#6B7A99' }}>Textbooks · Syllabus · Max 50 MB</p></>
+                    <p className="text-xs text-app-text-secondary">Textbooks · Syllabus · Max 50 MB</p></>
                 )}
               </div>
               <input type="file" accept=".pdf" className="hidden" onChange={handleUpload} disabled={uploading} />
             </label>
             <div className="flex gap-3">
               <button onClick={() => setStep('time')}
-                className="flex items-center gap-2 px-6 py-4 rounded-sm text-sm border"
-                style={{ borderColor: '#1E2A42', color: '#6B7A99' }}>
+                className="flex items-center gap-2 px-6 py-4 rounded-xl text-sm border border-app-border text-app-text-secondary hover:bg-app-surface transition-all">
                 <ArrowLeft size={14} /> Back
               </button>
               <button onClick={handleFinish} disabled={uploading}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-sm font-display font-bold text-sm disabled:opacity-40"
-                style={{ background: '#4FFFA0', color: '#080B14' }}>
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl font-display font-bold text-sm bg-app-primary text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md">
                 {data.uploadedFile ? 'Generate My Roadmap 🚀' : 'Skip & Generate Roadmap'}
                 <ArrowRight size={15} />
               </button>

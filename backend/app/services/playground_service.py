@@ -1,12 +1,12 @@
 import logging
-from typing import Optional, List, Dict, Any
+
 from supabase import Client
 
 from app.agents.code_coach_agent import (
-    generate_challenge, 
-    get_personalized_hint, 
-    evaluate_submission, 
-    explain_error
+    evaluate_submission,
+    explain_error,
+    generate_challenge,
+    get_personalized_hint,
 )
 from app.services.judge0_service import execute_code
 
@@ -27,12 +27,13 @@ class PlaygroundService:
             language=language
         )
 
-    async def get_hint(self, challenge_id: str, user_code: str, hint_level: int, error_message: Optional[str]) -> dict:
+    async def get_hint(self, challenge_id: str, user_code: str, hint_level: int, error_message: str | None, user_id: str) -> dict:
         return await get_personalized_hint(
             challenge_id=challenge_id, 
             user_code=user_code, 
             hint_level=hint_level,
-            error_message=error_message
+            error_message=error_message,
+            user_id=user_id
         )
 
     async def evaluate_code(self, challenge_id: str, user_id: str, user_code: str, hints_used: int) -> dict:
@@ -66,7 +67,7 @@ class PlaygroundService:
             "memory": result.memory,
         }
 
-    def get_user_challenges(self, user_id: str, roadmap_id: Optional[str]) -> list:
+    def get_user_challenges(self, user_id: str, roadmap_id: str | None) -> list:
         query = self.supabase.table("code_challenges").select("*").eq("user_id", user_id)
         if roadmap_id:
             query = query.eq("roadmap_id", roadmap_id)

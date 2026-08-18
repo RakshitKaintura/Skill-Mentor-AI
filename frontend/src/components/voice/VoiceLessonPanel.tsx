@@ -30,6 +30,8 @@ interface Props {
   stopDoubtSpeech: () => void
   getResumePrompt: () => string
   xpPoints?: number
+  socraticMode: boolean
+  setSocraticMode: (val: boolean) => void
 }
 
 /** Quick-access concept cards shown in the right panel */
@@ -46,6 +48,7 @@ export function VoiceLessonPanel({
   voiceDoubtResult, voiceDoubtQuestion,
   speakDoubtAnswer, speakingDoubt, stopDoubtSpeech,
   getResumePrompt, xpPoints = 0,
+  socraticMode, setSocraticMode,
 }: Props) {
   const [transcriptOpen, setTranscriptOpen] = useState(true)
   const [savedConcepts] = useState<string[]>([])
@@ -95,6 +98,34 @@ export function VoiceLessonPanel({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Voice Selector */}
+            {voice.availableVoices.length > 0 && (
+              <select
+                value={voice.selectedVoiceURI || ''}
+                onChange={(e) => voice.setSelectedVoiceURI(e.target.value)}
+                className="text-[10px] font-bold uppercase tracking-widest bg-transparent border border-white/10 rounded px-2 py-1 focus:outline-none"
+                style={{ color: 'var(--color-app-text-secondary)', background: 'var(--color-app-surface)' }}
+              >
+                <option value="">Default Voice</option>
+                {voice.availableVoices.filter(v => v.lang.startsWith('en')).map(v => (
+                  <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Socratic Mode Toggle */}
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-app-text-secondary)' }}>
+                Socratic Mode
+              </span>
+              <button
+                onClick={() => setSocraticMode(!socraticMode)}
+                className={`relative w-8 h-4 rounded-full transition-colors ${socraticMode ? 'bg-indigo-500' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${socraticMode ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+            </div>
+
             {/* XP badge */}
             {isActive && (
               <motion.div
@@ -297,13 +328,27 @@ export function VoiceLessonPanel({
               </div>
             )}
 
-            {/* Hint text */}
-            {!isActive && (
-              <div className="flex-1 flex items-center justify-center px-4 py-8">
-                <p className="text-center text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>
-                  Start a session to see AI-generated notes and insights
-                </p>
+            {/* Hint text or Visual Sync */}
+            {voice.activeVisual ? (
+              <div className="p-4" style={{ borderBottom: '1px solid var(--color-app-border)' }}>
+                <div className="rounded-xl overflow-hidden text-sm"
+                  style={{ background: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
+                  <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest bg-black/10 border-b border-black/5" style={{ color: 'var(--color-app-text-secondary)' }}>
+                    AI Whiteboard
+                  </div>
+                  <div className="p-3">
+                    <MarkdownRenderer content={voice.activeVisual} />
+                  </div>
+                </div>
               </div>
+            ) : (
+              !isActive && (
+                <div className="flex-1 flex items-center justify-center px-4 py-8">
+                  <p className="text-center text-xs" style={{ color: 'var(--color-app-text-secondary)' }}>
+                    Start a session to see AI-generated notes and insights
+                  </p>
+                </div>
+              )
             )}
           </div>
         </div>

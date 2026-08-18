@@ -2,10 +2,11 @@
 import json
 import logging
 from datetime import date
+
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.gemini   import get_gemini_model
 from app.core.database import get_supabase
+from app.core.gemini import get_gemini_model
 
 logger = logging.getLogger(__name__)
 
@@ -99,8 +100,7 @@ Return ONLY this JSON:
     raw = (resp.text or "").strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+        raw = raw.removeprefix("json")
     challenge_data = json.loads(raw.strip())
 
     # Upsert into DB
@@ -137,7 +137,7 @@ async def complete_daily_challenge(
     """Mark daily challenge as complete and award XP, after validating submission."""
     supabase = get_supabase()
     ch = supabase.table("daily_challenges").select("xp_awarded, completed, type, content") \
-        .eq("id", challenge_id).single().execute()
+        .eq("id", challenge_id).eq("user_id", user_id).single().execute()
     
     ch_data = ch.data if isinstance(ch.data, dict) else {}
     if not ch_data or ch_data.get("completed"):
@@ -165,7 +165,7 @@ async def complete_daily_challenge(
             try:
                 raw = (resp.text or "").strip()
                 if raw.startswith("```"): raw = raw.split("```")[1]
-                if raw.startswith("json"): raw = raw[4:]
+                raw = raw.removeprefix("json")
                 res = json.loads(raw.strip())
                 is_valid = res.get("pass", False)
                 feedback = res.get("feedback", "Your answer was incorrect.")
@@ -186,7 +186,7 @@ async def complete_daily_challenge(
                 try:
                     raw = (resp.text or "").strip()
                     if raw.startswith("```"): raw = raw.split("```")[1]
-                    if raw.startswith("json"): raw = raw[4:]
+                    raw = raw.removeprefix("json")
                     res = json.loads(raw.strip())
                     is_valid = res.get("pass", False)
                     feedback = res.get("feedback", "Your code solution was incorrect.")
@@ -207,7 +207,7 @@ async def complete_daily_challenge(
                 try:
                     raw = (resp.text or "").strip()
                     if raw.startswith("```"): raw = raw.split("```")[1]
-                    if raw.startswith("json"): raw = raw[4:]
+                    raw = raw.removeprefix("json")
                     res = json.loads(raw.strip())
                     is_valid = res.get("pass", False)
                     feedback = res.get("feedback", "Your explanation was inadequate.")
@@ -224,7 +224,7 @@ async def complete_daily_challenge(
         "completed":    True,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "xp_awarded":   xp,
-    }).eq("id", challenge_id).execute()
+    }).eq("id", challenge_id).eq("user_id", user_id).execute()
 
     supabase.rpc("increment_xp", {"p_user_id": user_id, "p_amount": xp}).execute()
 

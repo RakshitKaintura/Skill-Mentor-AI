@@ -3,12 +3,12 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Request
 from supabase import Client
 
-from app.models.schemas import HealthResponse
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.models.schemas import HealthResponse
 from app.services.health_service import HealthService
 
 logger   = logging.getLogger("app.health")

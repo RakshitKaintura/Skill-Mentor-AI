@@ -32,23 +32,35 @@ def mock_supabase(mocker):
     mock_insert_result = MagicMock()
     mock_insert_result.data = [{"id": "test-roadmap-id"}]
     
-    mock_execute = MagicMock()
-    mock_execute.execute.return_value = mock_insert_result
+    mock_chain = MagicMock()
+    mock_chain.execute.return_value = mock_insert_result
+    mock_chain.eq.return_value = mock_chain
+    mock_chain.limit.return_value = mock_chain
+    mock_chain.order.return_value = mock_chain
     
-    mock_insert = MagicMock()
-    mock_insert.insert.return_value = mock_execute
-    
-    mock_upsert = MagicMock()
-    mock_upsert.upsert.return_value = mock_execute
+    mock_table = MagicMock()
+    mock_table.insert.return_value = mock_chain
+    mock_table.upsert.return_value = mock_chain
+    mock_table.select.return_value = mock_chain
+    mock_table.update.return_value = mock_chain
+    mock_table.delete.return_value = mock_chain
 
     def table_mock(table_name):
-        if table_name == "roadmaps":
-            return mock_insert
-        return mock_upsert
+        return mock_table
 
-    sys.modules["supabase"].create_client.return_value = mock_client
+    from app.core.database import get_supabase
+    get_supabase.cache_clear()
+    
     mock_client.table.side_effect = table_mock
+    
+    # Also patch it in roadmap_agent since it uses `from app.core.database import get_supabase`
+    mocker.patch("app.agents.roadmap_agent.get_supabase", return_value=mock_client)
     mocker.patch("app.core.database.get_supabase", return_value=mock_client)
+    
+    # Also make sure create_client returns it
+    import supabase
+    supabase.create_client.return_value = mock_client
+    
     return mock_client
 
 @pytest.fixture

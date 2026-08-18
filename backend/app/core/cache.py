@@ -1,7 +1,10 @@
 import json
 import logging
-from typing import Optional, Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 import redis.asyncio as redis
+
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -10,14 +13,14 @@ class CacheManager:
     def __init__(self):
         settings = get_settings()
         self.redis_url = settings.redis_url
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def get_redis(self) -> redis.Redis:
         if self._redis is None:
             self._redis = redis.from_url(self.redis_url, decode_responses=True)
         return self._redis
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         try:
             client = await self.get_redis()
             data = await client.get(key)

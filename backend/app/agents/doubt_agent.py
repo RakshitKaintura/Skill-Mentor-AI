@@ -1,21 +1,21 @@
 
 import json
-import re
 import logging
+import re
 import uuid
-from typing import Dict, Any, Optional
+from typing import Any
 
 from app.core.database import get_supabase
 from app.core.llm_router import llm_router
-from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.models.schemas import DoubtRequest, DoubtResponse
 from app.services.memory_service import (
-    get_user_memory,
-    build_context_window,
-    append_turn,
     append_memory,
+    append_turn,
+    build_context_window,
+    get_user_memory,
     summarize_session,
 )
-from app.models.schemas import DoubtRequest, DoubtResponse
+from app.services.rag_service import format_rag_context, retrieve_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ Always respond with a valid JSON object containing:
 
 # ── JSON parsing helpers ───────────────────────────────────────────────────────
 
-def _extract_json_payload(raw_text: str) -> Dict[str, Any]:
+def _extract_json_payload(raw_text: str) -> dict[str, Any]:
     text = (raw_text or "").strip()
     if not text:
         raise ValueError("Empty model response")
@@ -54,7 +54,7 @@ def _extract_json_payload(raw_text: str) -> Dict[str, Any]:
     return json.loads(match.group(0))
 
 
-def _normalize_doubt_payload(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_doubt_payload(data: dict[str, Any]) -> dict[str, Any]:
     answer = (
         data.get("answer")
         or data.get("pedagogical_explanation")

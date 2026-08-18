@@ -1,9 +1,10 @@
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from supabase import Client
 
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
 from app.services.progress_service import ProgressService
 
@@ -26,8 +27,10 @@ class ReportCardRequest(BaseModel):
 @router.post("/report-card")
 async def generate_report_card_endpoint(
     req: ReportCardRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: ProgressService = Depends(get_progress_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Triggers Agent 6 to synthesize weekly data into a branded AI report card.
     Generates a PDF asset and updates topic mastery trends.
@@ -47,8 +50,10 @@ async def generate_report_card_endpoint(
 async def get_report_cards(
     user_id: str, 
     roadmap_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: ProgressService = Depends(get_progress_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Retrieves all historical report cards for a specific roadmap."""
     reports = service.get_report_cards(user_id, roadmap_id)
     return {"reports": reports}
@@ -56,8 +61,10 @@ async def get_report_cards(
 @router.get("/due-reviews/{user_id}")
 async def due_reviews_endpoint(
     user_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: ProgressService = Depends(get_progress_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Fetches topics flagged for review by the Spaced Repetition algorithm.
     Essential for long-term retention of technical concepts.
@@ -72,6 +79,7 @@ async def due_reviews_endpoint(
 @router.get("/leaderboard")
 async def get_leaderboard(
     limit: int = Query(20, le=100),
+    auth_user_id: str = Depends(get_current_user),
     service: ProgressService = Depends(get_progress_service)
 ):
     """Retrieves the global XP leaderboard to foster healthy competition."""
@@ -81,8 +89,10 @@ async def get_leaderboard(
 @router.get("/stats/{user_id}")
 async def get_user_stats(
     user_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: ProgressService = Depends(get_progress_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Returns comprehensive learning statistics including XP, streaks, 
     and topic mastery distributions.

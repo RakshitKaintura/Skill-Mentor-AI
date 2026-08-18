@@ -1,9 +1,10 @@
 import os
 import re
 import tempfile
-from typing import List, Dict, Any
-from app.core.gemini import embed_content
+from typing import Any
+
 from app.core.database import get_supabase
+from app.core.gemini import embed_content
 
 _converter = None
 
@@ -17,7 +18,7 @@ def get_document_converter():
         _converter = DocumentConverter()
     return _converter
 
-def chunk_text_by_sentence(text: str, chunk_size: int = 1000, overlap: int = 100) -> List[str]:
+def chunk_text_by_sentence(text: str, chunk_size: int = 1000, overlap: int = 100) -> list[str]:
     """
     Groups sentences into semantic chunks. 
     Optimized for Gemini's 2048 token limit (approx 1k characters for safety).
@@ -45,7 +46,7 @@ async def process_uploaded_book(
     file_bytes: bytes,
     file_name: str,
     skill_tag: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Advanced RAG Pipeline: Layout extraction -> Semantic Batch Embedding -> pgvector Store.
     """
@@ -59,7 +60,11 @@ async def process_uploaded_book(
             temp_path = tmp.name
 
         # 1. High-fidelity extraction (Docling handles complex PDF layouts)
-        result = get_document_converter().convert(temp_path)
+        # Run synchronously blocking Docling extraction in a separate thread pool
+        import asyncio
+        loop = asyncio.get_running_loop()
+        converter = get_document_converter()
+        result = await loop.run_in_executor(None, converter.convert, temp_path)
         full_markdown = result.document.export_to_markdown()
         
         # 2. Semantic Chunking
@@ -67,7 +72,7 @@ async def process_uploaded_book(
         
         # 3. Batch Embedding (March 2026 Performance Pattern)
         # We embed in batches of 100 to stay under Gemini API limits while maximizing speed
-        all_embeddings: List[List[float]] = []
+        all_embeddings: list[list[float]] = []
         batch_size = 100
         
         for i in range(0, len(chunks), batch_size):
@@ -114,7 +119,7 @@ async def process_uploaded_book(
 
 def _search_book_chunks_rpc(
     supabase,
-    query_vector: List[float],
+    query_vector: list[float],
     user_id: str,
     skill: str,
     top_k: int,
@@ -174,7 +179,7 @@ async def retrieve_chunks(
     skill_tag: str,
     top_k: int = 3,
     include_curated: bool = True,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Compatibility helper that returns retrieved chunks in the legacy shape."""
     supabase = get_supabase()
     query_vector = await embed_content(query, is_query=True)
@@ -200,7 +205,7 @@ async def retrieve_chunks(
     ]
 
 
-def format_rag_context(chunks: List[Dict[str, Any]]) -> str:
+def format_rag_context(chunks: list[dict[str, Any]]) -> str:
     """Formats chunk results into a readable context block for prompting."""
     if not chunks:
         return ""

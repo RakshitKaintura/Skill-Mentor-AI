@@ -1,8 +1,11 @@
-from typing import Dict, Any, Optional
-from supabase import Client
+from typing import Any
+
 from fastapi import HTTPException, status
-from app.models.schemas import GenerateRoadmapRequest, GenerateRoadmapResponse
+from supabase import Client
+
 from app.agents.roadmap_agent import generate_roadmap
+from app.models.schemas import GenerateRoadmapRequest
+
 
 class RoadmapService:
     def __init__(self, supabase: Client):
@@ -13,7 +16,7 @@ class RoadmapService:
         result = await generate_roadmap(req)
         return result
 
-    def get_roadmap_for_user(self, user_id: str) -> Dict[str, Any]:
+    def get_roadmap_for_user(self, user_id: str) -> dict[str, Any]:
         """Retrieves the latest active roadmap for a specific student."""
         result = (
             self.supabase.table("roadmaps")
@@ -29,7 +32,7 @@ class RoadmapService:
             
         return result.data[0]
 
-    def advance_roadmap(self, roadmap_id: str, user_id: str) -> Dict[str, Any]:
+    def advance_roadmap(self, roadmap_id: str, user_id: str) -> dict[str, Any]:
         """Updates student progress by advancing the current week and phase."""
         response = (
             self.supabase.table("roadmaps")

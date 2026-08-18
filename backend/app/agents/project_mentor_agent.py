@@ -2,14 +2,14 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from tenacity import retry, stop_after_attempt, wait_exponential
 from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.gemini import get_gemini_client  # Standardized Client pattern
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.gemini import get_gemini_client  # Standardized Client pattern
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -90,7 +90,7 @@ async def assign_project(
     roadmap_id: str,
     skill: str,
     level: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates a high-fidelity project specification tailored to student level."""
     supabase = get_supabase()
     client = get_gemini_client()
@@ -156,14 +156,14 @@ async def review_project(
     project_id: str,
     user_id: str,
     submitted_code: str,
-    github_url: Optional[str] = None,
-) -> Dict[str, Any]:
+    github_url: str | None = None,
+) -> dict[str, Any]:
     """Performs a senior-level code review and calculates XP rewards."""
     supabase = get_supabase()
     client = get_gemini_client()
 
     # 1. Fetch Project Definition
-    proj_res = supabase.table("projects").select("*").eq("id", project_id).single().execute()
+    proj_res = supabase.table("projects").select("*").eq("id", project_id).eq("user_id", user_id).single().execute()
     if not proj_res.data:
         raise ValueError("Project record not found.")
     p = proj_res.data
@@ -214,7 +214,7 @@ async def review_project(
         "review": review_data,
         "submitted_at": datetime.now(timezone.utc).isoformat(),
         "status": "submitted"
-    }).eq("id", project_id).execute()
+    }).eq("id", project_id).eq("user_id", user_id).execute()
 
     xp_res = supabase.rpc("complete_project", {
         "p_project_id": project_id,
@@ -230,12 +230,13 @@ async def review_project(
 async def get_mentor_guidance(
     project_id: str,
     question: str,
-) -> Dict[str, Any]:
+    user_id: str,
+) -> dict[str, Any]:
     """Provides non-spoiler architectural hints for a student stuck on a project."""
     supabase = get_supabase()
     client = get_gemini_client()
     
-    proj = supabase.table("projects").select("*").eq("id", project_id).single().execute()
+    proj = supabase.table("projects").select("*").eq("id", project_id).eq("user_id", user_id).single().execute()
     p = proj.data
 
     prompt = f"""

@@ -9,21 +9,29 @@ Usage:
     from app.core.llm_router import llm_router
     result = await llm_router.generate(prompt="...", system_instruction="...")
 """
-import asyncio
 import logging
 import time
-import json
-from typing import Optional
 
 import litellm
+
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-class AllProvidersFailedError(Exception):
+from app.core.exceptions import AgentError
+
+
+class AllProvidersFailedError(AgentError):
     """Raised when all API keys and fallback providers are exhausted or failing."""
-    pass
+    def __init__(self, internal_details: str):
+        # We pass a safe message to the client, but log the details.
+        super().__init__(message="AI model temporary outage or quota limit reached.")
+        self.internal_details = internal_details
+        
+    def __str__(self):
+        # For internal logging only
+        return f"AllProvidersFailedError: {self.internal_details}"
 
 
 class _KeyState:
@@ -82,7 +90,7 @@ class LLMRouter:
         self._initialized = True
         logger.info(f"LLMRouter initialized with {len(self._keys)} Gemini API key(s).")
 
-    def _get_available_key(self) -> Optional[_KeyState]:
+    def _get_available_key(self) -> _KeyState | None:
         for key_state in self._keys:
             if key_state.is_available():
                 return key_state
@@ -94,7 +102,7 @@ class LLMRouter:
         system_instruction: str,
         temperature: float = 1.0,
         max_output_tokens: int = 2048,
-        response_mime_type: Optional[str] = None,
+        response_mime_type: str | None = None,
     ) -> str:
         """
         Generates a text response using Gemini keys.
@@ -114,7 +122,7 @@ class LLMRouter:
         if response_mime_type == "application/json":
             response_format = {"type": "json_object"}
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         # 1. Try Gemini Keys
         for attempt in range(len(self._keys)):
@@ -146,7 +154,7 @@ class LLMRouter:
                 )
 
         raise AllProvidersFailedError(
-            f"All Gemini API keys are exhausted or on cooldown. Last error: {last_error}"
+            internal_details=f"All Gemini API keys are exhausted or on cooldown. Last error: {last_error}"
         )
 
     async def generate_json(

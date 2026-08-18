@@ -1,9 +1,8 @@
-import json
-from typing import Optional
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from app.core.auth import get_current_user
 from app.services.stream_service import StreamService
 
 router = APIRouter(prefix="/stream", tags=["Streaming"])
@@ -20,11 +19,14 @@ async def stream_ai_thinking(
     topic:       str           = Query("", description="Current lesson/roadmap topic"),
     skill:       str           = Query("", description="Skill being learned"),
     level:       str           = Query("beginner"),
-    user_id:     Optional[str] = Query(None),
-    roadmap_id:  Optional[str] = Query(None),
+    user_id:     str | None = Query(None),
+    roadmap_id:  str | None = Query(None),
     enable_thinking: bool      = Query(False, description="Whether to include AI thought process"),
+    auth_user_id: str = Depends(get_current_user),
     service: StreamService     = Depends(get_stream_service)
 ):
+    if user_id and user_id != auth_user_id: 
+        raise HTTPException(status_code=403, detail="Not authorized")
     """
     SSE endpoint — streams Gemini thought + answer chunks.
 

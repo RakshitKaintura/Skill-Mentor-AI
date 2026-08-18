@@ -1,4 +1,5 @@
 import { env } from '@/config/env';
+import { createClient } from '@/lib/supabase/client';
 
 export class APIError extends Error {
   constructor(public status: number, message: string) {
@@ -16,6 +17,15 @@ export async function fetchApi<T>(
   const headers = new Headers(options.headers || {});
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  // Automatically attach Supabase JWT token if we are on the client side
+  if (typeof window !== 'undefined') {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers.set('Authorization', `Bearer ${session.access_token}`);
+    }
   }
 
   const response = await fetch(url, {

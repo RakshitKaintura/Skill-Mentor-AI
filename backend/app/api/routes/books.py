@@ -1,8 +1,18 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, status, Depends
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from supabase import Client
 
-from app.models.schemas import BookUploadResponse, BookStatusResponse, ProcessingStatus
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
+from app.models.schemas import BookStatusResponse, BookUploadResponse, ProcessingStatus
 from app.services.books_service import BooksService
 
 router = APIRouter(prefix="/books", tags=["Books & RAG"])
@@ -20,8 +30,10 @@ async def upload_book(
     user_id: str = Form(...),
     skill_tag: str = Form(...),
     file: UploadFile = File(...),
+    auth_user_id: str = Depends(get_current_user),
     service: BooksService = Depends(get_books_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Receives a PDF, validates its integrity, and queues it for RAG processing.
     Processing occurs in a non-blocking background task.
@@ -56,10 +68,11 @@ async def upload_book(
 @router.get("/{book_id}/status", response_model=BookStatusResponse)
 async def get_book_status(
     book_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: BooksService = Depends(get_books_service)
 ):
     """Checks the current progress of PDF embedding and topic detection."""
-    book = service.get_status(book_id)
+    book = service.get_status(book_id, auth_user_id)
     return BookStatusResponse(
         book_id=book["id"],
         file_name=book["file_name"],
@@ -73,8 +86,10 @@ async def get_book_status(
 async def delete_book(
     book_id: str, 
     user_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: BooksService = Depends(get_books_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Deletes the book record and cascaded vector chunks.
     Ensures the requesting user owns the document.

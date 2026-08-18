@@ -1,15 +1,15 @@
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from tenacity import retry, stop_after_attempt, wait_exponential
 from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.gemini import get_gemini_client  # Standardized Client pattern
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.gemini import get_gemini_client  # Standardized Client pattern
 from app.services.notes_service import generate_report_pdf
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ def update_topic_mastery(user_id: str, topic: str, skill: str, score_pct: float)
         logger.warning("Failed to update topic mastery for user %s (%s/%s): %s", user_id, topic, skill, e)
 
 
-async def get_due_reviews(user_id: str) -> List[Dict[str, Any]]:
+async def get_due_reviews(user_id: str) -> list[dict[str, Any]]:
     """
     Fetch topics due for spaced repetition review.
     Uses DB RPC when available, with a table-query fallback.
@@ -111,7 +111,7 @@ async def generate_report_card(
     user_id: str,
     roadmap_id: str,
     week_number: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Analyzes weekly performance metrics and generates a personalized AI report card.
     """
@@ -123,7 +123,7 @@ async def generate_report_card(
 
     # 1. Data Aggregation (Multi-source Fetching)
     roadmap = supabase.table("roadmaps").select("skill, current_topic") \
-        .eq("id", roadmap_id).single().execute()
+        .eq("id", roadmap_id).eq("user_id", user_id).single().execute()
 
     # Fetch weekly engagement across all learning activities
     lessons = supabase.table("lessons").select("completed") \
@@ -148,7 +148,7 @@ async def generate_report_card(
     
     avg_score = 0.0
     if quizzes.data:
-        def _quiz_denominator(row: Dict[str, Any]) -> int:
+        def _quiz_denominator(row: dict[str, Any]) -> int:
             if isinstance(row.get("total_points"), int):
                 return max(row["total_points"], 1)
             if isinstance(row.get("total_questions"), int):
@@ -165,7 +165,7 @@ async def generate_report_card(
                 return max(len(questions), 1)
             return 1
 
-        def _quiz_percentage(row: Dict[str, Any]) -> float:
+        def _quiz_percentage(row: dict[str, Any]) -> float:
             try:
                 score = float(row.get("score") or 0)
             except Exception:

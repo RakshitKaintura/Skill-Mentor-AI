@@ -2,7 +2,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -10,7 +10,7 @@ from app.core.config import get_settings
 from app.core.database import get_supabase
 from app.core.gemini import get_gemini_client
 from app.core.llm_router import llm_router
-from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.services.rag_service import format_rag_context, retrieve_chunks
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -51,10 +51,10 @@ CRITICAL:
 - Each question must include a brief 'explanation' for the correct answer."""
 
 
-def _build_fallback_quiz(topic: str, difficulty: str, num_questions: int) -> Dict[str, Any]:
+def _build_fallback_quiz(topic: str, difficulty: str, num_questions: int) -> dict[str, Any]:
     """Create a deterministic quiz when model output is unavailable or malformed."""
     safe_count = max(3, min(num_questions, 10))
-    questions: list[Dict[str, Any]] = []
+    questions: list[dict[str, Any]] = []
 
     for idx in range(1, safe_count + 1):
         questions.append({
@@ -92,10 +92,10 @@ async def generate_quiz(
     topic: str,
     skill: str,
     week_number: int,
-    lesson_id: Optional[str] = None,
+    lesson_id: str | None = None,
     difficulty: str = "beginner",
     num_questions: int = 5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generates a context-aware, adaptive quiz using RAG and student history.
     """
@@ -132,7 +132,7 @@ async def generate_quiz(
 
     history_context = ""
     if prev_results.data:
-        def _quiz_denominator(row: Dict[str, Any]) -> int:
+        def _quiz_denominator(row: dict[str, Any]) -> int:
             if isinstance(row.get("total_questions"), int):
                 return max(row["total_questions"], 1)
             if isinstance(row.get("total_points"), int):
@@ -142,7 +142,7 @@ async def generate_quiz(
                 return max(len(questions), 1)
             return 1
 
-        def _score_value(row: Dict[str, Any]) -> float:
+        def _score_value(row: dict[str, Any]) -> float:
             score = row.get("score")
             if isinstance(score, (int, float)):
                 return float(score)
@@ -188,7 +188,7 @@ async def generate_quiz(
     }}
     """
 
-    quiz_data: Dict[str, Any]
+    quiz_data: dict[str, Any]
     try:
         raw_text = await llm_router.generate_json(
             prompt=prompt,
@@ -227,16 +227,16 @@ async def generate_quiz(
 async def evaluate_quiz(
     quiz_id: str,
     user_id: str,
-    user_answers: list[Dict[str, Any]],
+    user_answers: list[dict[str, Any]],
     time_taken: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Evaluates submissions, calculates XP, and triggers spaced repetition updates.
     """
     supabase = get_supabase()
 
     # 1. Retrieve Quiz Metadata
-    quiz_row = supabase.table("quizzes").select("*").eq("id", quiz_id).single().execute()
+    quiz_row = supabase.table("quizzes").select("*").eq("id", quiz_id).eq("user_id", user_id).single().execute()
     if not quiz_row.data:
         raise ValueError("Assessment record not found.")
 
@@ -288,7 +288,7 @@ async def evaluate_quiz(
         "completed": True,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "xp_awarded": xp_earned
-    }).eq("id", quiz_id).execute()
+    }).eq("id", quiz_id).eq("user_id", user_id).execute()
 
     # Award XP and update progress via database functions
     supabase.rpc("increment_xp", {"p_user_id": user_id, "p_amount": xp_earned}).execute()

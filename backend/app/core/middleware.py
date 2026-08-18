@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import logging
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
-from typing import Awaitable, Callable
 
 from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -11,12 +12,12 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from app.core.config import get_settings
 from app.core.exceptions import (
     ErrorDetail,
     ErrorResponse,
     SkillMentorError,
 )
-from app.core.config import get_settings
 
 logger = logging.getLogger("app.middleware")
 

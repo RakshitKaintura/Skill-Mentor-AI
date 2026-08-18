@@ -1,14 +1,14 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from tenacity import retry, stop_after_attempt, wait_exponential
 from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.gemini import get_gemini_client
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.gemini import get_gemini_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -33,11 +33,11 @@ async def generate_mock_interview(
     user_id: str,
     skill: str,
     level: str,
-    roadmap_id: Optional[str] = None,
-    company_target: Optional[str] = None,
+    roadmap_id: str | None = None,
+    company_target: str | None = None,
     interview_type: str = "technical",
     num_questions: int = 8,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates an adaptive mock interview based on skill level and target company."""
     supabase = get_supabase()
     client = get_gemini_client()
@@ -102,11 +102,11 @@ async def generate_mock_interview(
 async def evaluate_interview_answer(
     question_text: str,
     answer: str,
-    key_points: List[str],
+    key_points: list[str],
     skill: str,
     level: str,
     question_id: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Evaluates a single interview answer and returns structured coaching feedback."""
     client = get_gemini_client()
 
@@ -149,9 +149,9 @@ async def evaluate_interview_answer(
 async def complete_interview_session(
     session_id: str,
     user_id: str,
-    answers: List[Dict[str, Any]],
-    evaluations: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    answers: list[dict[str, Any]],
+    evaluations: list[dict[str, Any]],
+) -> dict[str, Any]:
     """Completes an interview session, persists summary, and awards XP."""
     supabase = get_supabase()
 
@@ -225,7 +225,7 @@ async def review_resume_ai(
     resume_text: str,
     target_role: str,
     skill_context: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Evaluates a resume for ATS compatibility and technical impact."""
     client = get_gemini_client()
 
@@ -260,7 +260,7 @@ async def review_resume_ai(
 
     return json.loads(response.text or "{}")
 
-async def check_job_readiness_logic(user_id: str, roadmap_id: str) -> Dict[str, Any]:
+async def check_job_readiness_logic(user_id: str, roadmap_id: str) -> dict[str, Any]:
     """
     Calculates the 'SkillMentor Readiness Score' using a weighted algorithm.
     This is the ultimate 'Proof of Competency' for the student.

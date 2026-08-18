@@ -1,5 +1,7 @@
+
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any, cast
+
 from fastapi import HTTPException
 from supabase import Client
 
@@ -11,7 +13,7 @@ class UserNotesService:
     def __init__(self, supabase: Client):
         self.supabase = supabase
 
-    def list_notes(self, user_id: str, lesson_id: Optional[str], skill: Optional[str], search: Optional[str], limit: int) -> dict:
+    def list_notes(self, user_id: str, lesson_id: str | None, skill: str | None, search: str | None, limit: int) -> dict:
         q = self.supabase.table("user_notes") \
             .select("*") \
             .eq("user_id", user_id) \
@@ -28,7 +30,7 @@ class UserNotesService:
         result = q.execute()
         return {"notes": result.data or [], "count": len(result.data or [])}
 
-    def create_note(self, user_id: str, lesson_id: Optional[str], roadmap_id: Optional[str], skill: str, topic: str, step_index: Optional[int], step_title: Optional[str], content: str, tags: list[str]) -> dict:
+    def create_note(self, user_id: str, lesson_id: str | None, roadmap_id: str | None, skill: str, topic: str, step_index: int | None, step_title: str | None, content: str, tags: list[str]) -> dict:
         row = {
             "user_id":    user_id,
             "lesson_id":  lesson_id,
@@ -43,9 +45,9 @@ class UserNotesService:
         result = self.supabase.table("user_notes").insert(row).execute()
         if not result.data:
             raise RuntimeError("Insert returned no data")
-        return result.data[0]
+        return cast(dict[str, Any], result.data[0])
 
-    def update_note(self, note_id: str, user_id: str, content: Optional[str], tags: Optional[list[str]]) -> dict:
+    def update_note(self, note_id: str, user_id: str, content: str | None, tags: list[str] | None) -> dict:
         existing = self.supabase.table("user_notes") \
             .select("id, user_id") \
             .eq("id", note_id) \
@@ -69,7 +71,7 @@ class UserNotesService:
             .eq("id", note_id) \
             .execute()
             
-        return result.data[0] if result.data else {"id": note_id, **updates}
+        return cast(dict[str, Any], result.data[0]) if result.data else {"id": note_id, **updates}
 
     def delete_note(self, note_id: str, user_id: str) -> None:
         result = self.supabase.table("user_notes") \
@@ -90,13 +92,14 @@ class UserNotesService:
             .eq("user_id", user_id) \
             .execute()
 
-        notes = result.data or []
+        from typing import cast
+        notes = cast(list[dict[str, Any]], result.data or [])
         if not notes:
             raise HTTPException(404, detail="No accessible notes found for the given IDs")
 
         note_blocks = []
         for n in notes:
-            ctx = f"Step: {n.get('step_title') or 'General'}\n{n['content']}"
+            ctx = f"Step: {n.get('step_title') or 'General'!s}\n{n.get('content', '')!s}"
             note_blocks.append(ctx)
 
         prompt = (
@@ -104,7 +107,7 @@ class UserNotesService:
             "Summarize the following study notes into 5–7 clear, concise bullet points.\n"
             "Focus on key concepts, definitions, patterns, and anything worth memorizing.\n"
             "Format each bullet starting with '• '.\n\n"
-            "Topic: " + (notes[0].get("topic") or "Unknown") + "\n\n"
+            "Topic: " + str(notes[0].get("topic") or "Unknown") + "\n\n"
             "Notes:\n" + "\n\n---\n\n".join(note_blocks)
         )
 
@@ -112,7 +115,7 @@ class UserNotesService:
             model="gemini-2.0-flash-lite",
             contents=prompt,
         )
-        summary = response.text.strip()
+        summary = (response.text or "").strip()
 
         self.supabase.table("user_notes") \
             .update({"ai_summary": summary}) \

@@ -1,9 +1,11 @@
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Query, Depends
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from supabase import Client
 
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
 from app.services.quiz_service import QuizService
 
@@ -17,7 +19,7 @@ class GenerateQuizRequest(BaseModel):
     roadmap_id: str
     topic: str
     skill: str
-    lesson_id: Optional[str] = None
+    lesson_id: str | None = None
     week_number: int = 1
     difficulty: str = "beginner"
     num_questions: int = 5
@@ -25,7 +27,7 @@ class GenerateQuizRequest(BaseModel):
 class SubmitQuizRequest(BaseModel):
     quiz_id: str
     user_id: str
-    user_answers: List[Dict[str, Any]]
+    user_answers: list[dict[str, Any]]
     time_taken: int = 0
 
 def get_quiz_service(supabase: Client = Depends(get_supabase)) -> QuizService:
@@ -36,8 +38,10 @@ def get_quiz_service(supabase: Client = Depends(get_supabase)) -> QuizService:
 @router.post("/generate")
 async def generate_quiz_endpoint(
     req: GenerateQuizRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: QuizService = Depends(get_quiz_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Triggers Agent 4 to create a personalized, adaptive quiz.
     Uses RAG and historical performance to tune difficulty.
@@ -62,8 +66,10 @@ async def generate_quiz_endpoint(
 async def submit_quiz_endpoint(
     req: SubmitQuizRequest, 
     background_tasks: BackgroundTasks,
+    auth_user_id: str = Depends(get_current_user),
     service: QuizService = Depends(get_quiz_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Evaluates quiz submissions and triggers background mastery updates.
     Returns immediate feedback and XP rewards to the student.
@@ -84,10 +90,12 @@ async def submit_quiz_endpoint(
 @router.get("/user/{user_id}")
 async def get_user_quizzes(
     user_id: str, 
-    roadmap_id: Optional[str] = None, 
+    roadmap_id: str | None = None, 
     limit: int = Query(10, le=50),
+    auth_user_id: str = Depends(get_current_user),
     service: QuizService = Depends(get_quiz_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Retrieves history of assessments for a specific user."""
     quizzes = service.get_user_quizzes(user_id, roadmap_id, limit)
     return {"quizzes": quizzes}
@@ -95,10 +103,11 @@ async def get_user_quizzes(
 @router.get("/{quiz_id}")
 async def get_quiz(
     quiz_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: QuizService = Depends(get_quiz_service)
 ):
     """Fetches the full details (questions and solutions) for a specific quiz record."""
-    quiz = service.get_quiz(quiz_id)
+    quiz = service.get_quiz(quiz_id, auth_user_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Assessment record not found.")
     return quiz

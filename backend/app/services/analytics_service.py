@@ -3,12 +3,11 @@ Analytics Service — tracks platform events and generates
 admin-level insights on user engagement and learning outcomes.
 """
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta, timezone
 
-from supabase import Client
 from postgrest.types import CountMethod
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +18,10 @@ class AnalyticsService:
     async def track_event(
         self,
         event_type:  str,
-        user_id:     Optional[str] = None,
-        event_data:  Optional[dict] = None,
-        page:        Optional[str] = None,
-        session_id:  Optional[str] = None,
+        user_id:     str | None = None,
+        event_data:  dict | None = None,
+        page:        str | None = None,
+        session_id:  str | None = None,
     ) -> None:
         """Log a platform event. Fire-and-forget — never blocks the main flow."""
         try:

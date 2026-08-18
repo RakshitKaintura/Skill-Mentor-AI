@@ -16,7 +16,6 @@ export default function RegisterPage() {
   const [showPw, setShowPw]       = useState(false)
   const [loading, setLoading]     = useState(false)
   const [errors, setErrors]       = useState<Record<string, string>>({})
-  const [emailSent, setEmailSent] = useState(false)
   const [cooldownSeconds, setCooldownSeconds] = useState(0)
 
   useEffect(() => {
@@ -68,19 +67,11 @@ export default function RegisterPage() {
         password: form.password,
         options: {
           data: { full_name: form.name },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
       if (error) throw error
 
-      // Email confirmation flow: Supabase returns a user but no active session.
-      // Show confirmation UI immediately and do not block on profile writes.
-      if (data.user && !data.session) {
-        setEmailSent(true)
-        return
-      }
-
-      if (data.user && data.session) {
+      if (data.user) {
         const { error: pe } = await supabase.from('profiles').upsert(
           {
             id: data.user.id,
@@ -96,8 +87,6 @@ export default function RegisterPage() {
         router.push('/onboarding')
         return
       }
-
-      setEmailSent(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       if (msg.includes('already registered')) {
@@ -119,28 +108,6 @@ export default function RegisterPage() {
       setLoading(false)
     }
   }
-
-  if (emailSent) return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md text-center animate-fade-up">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ background: 'rgba(79,255,160,0.1)', border: '1px solid rgba(79,255,160,0.3)' }}>
-          <CheckCircle size={32} style={{ color: '#4FFFA0' }} />
-        </div>
-        <h1 className="font-display font-black text-3xl mb-3" style={{ letterSpacing: '-1px' }}>
-          Check your email
-        </h1>
-        <p className="text-sm mb-8 leading-relaxed" style={{ color: '#6B7A99' }}>
-          We sent a confirmation link to{' '}
-          <span style={{ color: '#E8EDF8', fontWeight: 600 }}>{form.email}</span>.
-          Click it to activate your account.
-        </p>
-        <button onClick={() => setEmailSent(false)} className="text-sm underline" style={{ color: '#5B8EFF' }}>
-          Use a different email
-        </button>
-      </div>
-    </div>
-  )
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">

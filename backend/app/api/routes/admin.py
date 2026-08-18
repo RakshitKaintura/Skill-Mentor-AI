@@ -1,9 +1,10 @@
 """Admin analytics routes — platform insights."""
 import logging
-from fastapi import APIRouter, HTTPException, Header, Depends
-from typing import Optional
+
+from fastapi import APIRouter, Depends
 from supabase import Client
 
+from app.core.auth import verify_admin_key
 from app.core.database import get_supabase
 from app.services.admin_service import AdminService
 
@@ -13,38 +14,30 @@ router   = APIRouter(prefix="/admin", tags=["admin"])
 def get_admin_service(supabase: Client = Depends(get_supabase)) -> AdminService:
     return AdminService(supabase)
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(verify_admin_key)])
 async def all_stats(
-    x_admin_key: Optional[str] = Header(default=None),
     service: AdminService = Depends(get_admin_service)
 ):
-    service.verify_admin(x_admin_key)
     return await service.get_all_stats()
 
 
-@router.get("/engagement")
+@router.get("/engagement", dependencies=[Depends(verify_admin_key)])
 async def engagement(
     days: int = 7, 
-    x_admin_key: Optional[str] = Header(default=None),
     service: AdminService = Depends(get_admin_service)
 ):
-    service.verify_admin(x_admin_key)
     return {"engagement": await service.get_engagement(days)}
 
 
-@router.get("/funnel")
+@router.get("/funnel", dependencies=[Depends(verify_admin_key)])
 async def funnel(
-    x_admin_key: Optional[str] = Header(default=None),
     service: AdminService = Depends(get_admin_service)
 ):
-    service.verify_admin(x_admin_key)
     return {"funnel": await service.get_funnel()}
 
 
-@router.get("/skills")
+@router.get("/skills", dependencies=[Depends(verify_admin_key)])
 async def skills(
-    x_admin_key: Optional[str] = Header(default=None),
     service: AdminService = Depends(get_admin_service)
 ):
-    service.verify_admin(x_admin_key)
     return {"skills": await service.get_skills()}

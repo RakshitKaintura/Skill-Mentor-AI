@@ -1,6 +1,5 @@
 
 import logging
-from typing import Optional
 from datetime import datetime, timezone
 
 from app.core.database import get_supabase
@@ -269,7 +268,7 @@ async def get_user_memory(user_id: str) -> str:
 async def append_memory(
     user_id: str,
     session_summary: str,
-    topics: Optional[list[str]] = None,
+    topics: list[str] | None = None,
 ) -> None:
     """
     Appends a session summary to the user's long-term memory buffer.
@@ -307,8 +306,8 @@ async def append_memory(
 async def summarize_session(
     topic: str,
     skill: str,
-    key_takeaway: Optional[str] = None,
-    struggle_description: Optional[str] = None,
+    key_takeaway: str | None = None,
+    struggle_description: str | None = None,
 ) -> str:
     """Generates a compact session summary string stored in long-term memory."""
     parts = [f"Studied '{topic}' in {skill}."]

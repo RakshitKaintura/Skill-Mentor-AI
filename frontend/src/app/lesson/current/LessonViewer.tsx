@@ -17,7 +17,7 @@ import { FocusTimer }    from '@/components/ui/FocusTimer'
 import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft, Mic, MessageCircle, FileText, Timer,
-  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight
+  CheckCircle, Loader2, BookOpen, ChevronLeft, ChevronRight, HelpCircle
 } from 'lucide-react'
 
 interface Props {
@@ -49,7 +49,8 @@ export function LessonViewer({
   const { track } = useAnalytics()
 
   const { lesson, loading, error, generating, generateLesson, fetchLesson, completeLesson, generateNotes } = useLesson()
-  const voice = useVoice({ topic, skill, level,
+  const [socraticMode, setSocraticMode] = useState(false)
+  const voice = useVoice({ topic, skill, level, socratic: socraticMode,
     lessonContext: lesson?.steps.map(s => `${s.title}: ${s.content}`).join('\n') })
 
   const storageKey = `thought_process_${topic}_${skill}`.replace(/\s+/g, '_')
@@ -529,6 +530,9 @@ export function LessonViewer({
             speakingDoubt={speakingDoubt}
             stopDoubtSpeech={stopDoubtSpeech}
             getResumePrompt={getResumePrompt}
+            xpPoints={xpPoints}
+            socraticMode={socraticMode}
+            setSocraticMode={setSocraticMode}
           />
         )}
 

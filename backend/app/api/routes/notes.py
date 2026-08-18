@@ -1,10 +1,10 @@
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from supabase import Client
 
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
 from app.services.user_notes_service import UserNotesService
 
@@ -15,18 +15,18 @@ logger = logging.getLogger(__name__)
 
 class NoteCreate(BaseModel):
     user_id:    str
-    lesson_id:  Optional[str] = None
-    roadmap_id: Optional[str] = None
+    lesson_id:  str | None = None
+    roadmap_id: str | None = None
     skill:      str
     topic:      str
-    step_index: Optional[int]  = None
-    step_title: Optional[str]  = None
+    step_index: int | None  = None
+    step_title: str | None  = None
     content:    str            = Field(..., min_length=1, max_length=10_000)
     tags:       list[str]      = []
 
 class NoteUpdate(BaseModel):
-    content: Optional[str]      = Field(None, max_length=10_000)
-    tags:    Optional[list[str]] = None
+    content: str | None      = Field(None, max_length=10_000)
+    tags:    list[str] | None = None
 
 class SummarizeRequest(BaseModel):
     user_id:  str
@@ -42,10 +42,11 @@ def get_user_notes_service(supabase: Client = Depends(get_supabase)) -> UserNote
 @router.get("")
 async def list_notes(
     user_id:   str             = Query(...),
-    lesson_id: Optional[str]  = Query(None),
-    skill:     Optional[str]  = Query(None),
-    search:    Optional[str]  = Query(None),
+    lesson_id: str | None  = Query(None),
+    skill:     str | None  = Query(None),
+    search:    str | None  = Query(None),
     limit:     int             = Query(50, ge=1, le=200),
+    auth_user_id: str = Depends(get_current_user),
     service: UserNotesService = Depends(get_user_notes_service)
 ):
     """Return user's notes, optionally filtered."""
@@ -61,8 +62,10 @@ async def list_notes(
 @router.post("", status_code=201)
 async def create_note(
     req: NoteCreate,
+    auth_user_id: str = Depends(get_current_user),
     service: UserNotesService = Depends(get_user_notes_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Create a new note anchored to a lesson step."""
     try:
         return service.create_note(
@@ -88,8 +91,10 @@ async def update_note(
     note_id: str,
     req:     NoteUpdate,
     user_id: str = Query(...),
+    auth_user_id: str = Depends(get_current_user),
     service: UserNotesService = Depends(get_user_notes_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Update note content and/or tags. User must own the note."""
     try:
         return service.update_note(note_id, user_id, req.content, req.tags)
@@ -106,8 +111,10 @@ async def update_note(
 async def delete_note(
     note_id: str,
     user_id: str = Query(...),
+    auth_user_id: str = Depends(get_current_user),
     service: UserNotesService = Depends(get_user_notes_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Delete a note. User must own the note."""
     try:
         service.delete_note(note_id, user_id)
@@ -123,8 +130,10 @@ async def delete_note(
 @router.post("/summarize")
 async def summarize_notes(
     req: SummarizeRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: UserNotesService = Depends(get_user_notes_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     AI-summarize a list of notes into bullet points using Gemini.
     Writes the summary back to each note's ai_summary column.
@@ -135,4 +144,4 @@ async def summarize_notes(
         raise
     except Exception as e:
         logger.error("summarize_notes error: %s", e)
-        raise HTTPException(500, detail=f"Summarization failed: {str(e)}")
+        raise HTTPException(500, detail=f"Summarization failed: {e!s}")

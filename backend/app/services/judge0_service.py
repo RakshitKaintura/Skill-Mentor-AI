@@ -5,8 +5,8 @@ Docs: https://ce.judge0.com
 """
 import asyncio
 import logging
+
 import httpx
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class ExecutionResult:
         self.compile_output: str = data.get("compile_output") or ""
         self.message: str = data.get("message") or ""
         self.time: str = data.get("time") or "0"
-        self.memory: Optional[int] = data.get("memory")
+        self.memory: int | None = data.get("memory")
 
         # Status IDs: 1=In Queue, 2=Processing, 3=Accepted, 4=Wrong Answer
         # 5=TLE, 6=CE, 7-12=Runtime Errors, 13=Internal Error

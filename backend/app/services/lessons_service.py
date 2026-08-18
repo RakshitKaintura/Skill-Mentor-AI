@@ -1,13 +1,15 @@
 import json
-from typing import AsyncGenerator, Optional, Dict, Any
+from collections.abc import AsyncGenerator
+
 from supabase import Client
 
-from app.agents.lesson_agent import generate_lesson, complete_lesson
 from app.agents.doubt_agent import solve_doubt
-from app.services.notes_service import generate_lesson_pdf
-from app.services.rag_service import retrieve_chunks, format_rag_context
-from app.core.gemini import get_gemini_client
+from app.agents.lesson_agent import complete_lesson, generate_lesson
 from app.core.config import get_settings
+from app.core.gemini import get_gemini_client
+from app.services.notes_service import generate_lesson_pdf
+from app.services.rag_service import format_rag_context, retrieve_chunks
+
 
 class LessonsService:
     def __init__(self, supabase: Client):
@@ -40,7 +42,7 @@ class LessonsService:
         )
         return result.data or []
 
-    def get_lesson(self, lesson_id: str) -> Optional[dict]:
+    def get_lesson(self, lesson_id: str) -> dict | None:
         result = self.supabase.table("lessons").select("*").eq("id", lesson_id).single().execute()
         return result.data if result.data else None
 

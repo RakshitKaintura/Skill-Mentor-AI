@@ -1,12 +1,10 @@
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any
+
 from fastapi import HTTPException
 from supabase import Client
 
-from app.agents.progress_agent import (
-    generate_report_card, 
-    get_due_reviews
-)
+from app.agents.progress_agent import generate_report_card, get_due_reviews
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +12,7 @@ class ProgressService:
     def __init__(self, supabase: Client):
         self.supabase = supabase
 
-    def _normalize_report_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
         """Map report_cards rows to a stable API shape consumed by frontend."""
         avg_score_raw = row.get("avg_quiz_score", 0)
         try:

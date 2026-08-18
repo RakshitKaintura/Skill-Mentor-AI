@@ -1,17 +1,16 @@
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Any
 
-from tenacity import retry, stop_after_attempt, wait_exponential
 from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.gemini import get_gemini_client # Standardized Client pattern
 from app.core.config import get_settings
 from app.core.database import get_supabase
-from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.core.gemini import get_gemini_client  # Standardized Client pattern
 from app.services.judge0_service import run_test_cases
+from app.services.rag_service import format_rag_context, retrieve_chunks
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -39,7 +38,7 @@ async def generate_challenge(
     skill: str,
     difficulty: str = "beginner",
     language: str = "javascript",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates a contextual coding challenge based on lesson topic and RAG context."""
     supabase = get_supabase()
     client = get_gemini_client()
@@ -135,14 +134,15 @@ async def get_personalized_hint(
     challenge_id: str,
     user_code: str,
     hint_level: int,
-    error_message: Optional[str] = None,
-) -> Dict[str, Any]:
+    error_message: str | None = None,
+    user_id: str = "",
+) -> dict[str, Any]:
     """Analyzes user code and provides a personalized hint without solving the problem."""
     supabase = get_supabase()
     client = get_gemini_client()
 
     # Fetch original challenge context
-    challenge_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).single().execute()
+    challenge_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).eq("user_id", user_id).single().execute()
     if not challenge_record.data or not isinstance(challenge_record.data, dict):
         raise ValueError("Challenge context not found.")
 
@@ -184,7 +184,7 @@ async def get_personalized_hint(
     supabase.table("code_challenges").update({
         "hints_used": hint_level,
         "last_user_code": user_code
-    }).eq("id", challenge_id).execute()
+    }).eq("id", challenge_id).eq("user_id", user_id).execute()
 
     return hint_data
 
@@ -193,12 +193,12 @@ async def evaluate_submission(
     user_id: str,
     user_code: str,
     hints_used: int
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Executes code against test cases via Judge0, then gets AI pedagogical feedback."""
     supabase = get_supabase()
     client = get_gemini_client()
 
-    ch_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).single().execute()
+    ch_record = supabase.table("code_challenges").select("*").eq("id", challenge_id).eq("user_id", user_id).single().execute()
     ch = ch_record.data
     if not isinstance(ch, dict):
         raise ValueError("Invalid challenge data format.")
@@ -243,7 +243,7 @@ async def evaluate_submission(
     Return JSON: {{"overall_feedback": "...", "code_quality": {{"score": 0-100, "comments": []}}, "feedback": {{"what_to_improve": "..."}}}}
     """
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "passed": all_passed,
         "tests_passed": tests_passed,
         "tests_total": len(real_results),
@@ -295,7 +295,7 @@ async def evaluate_submission(
             attempts = 0
         supabase.table("code_challenges").update({
             "attempts": attempts + 1
-        }).eq("id", challenge_id).execute()
+        }).eq("id", challenge_id).eq("user_id", user_id).execute()
 
     return result
 
@@ -305,7 +305,7 @@ async def explain_error(
     code: str,
     language: str = "javascript",
     topic: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Converts raw runtime/compiler errors into a concise, learner-friendly explanation.
     """

@@ -1,8 +1,8 @@
 import json
-from typing import Optional, AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from app.core.gemini import stream_mentor_response
-from app.services.rag_service import retrieve_chunks, format_rag_context
+from app.services.rag_service import format_rag_context, retrieve_chunks
 
 # ── System prompts used per context ─────────────────────────
 
@@ -84,8 +84,8 @@ class StreamService:
         topic: str,
         skill: str,
         level: str,
-        user_id: Optional[str],
-        roadmap_id: Optional[str],
+        user_id: str | None,
+        roadmap_id: str | None,
         enable_thinking: bool,
     ) -> AsyncGenerator[str, None]:
         

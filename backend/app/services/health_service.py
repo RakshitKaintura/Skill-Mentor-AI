@@ -1,4 +1,5 @@
 import logging
+
 from supabase import Client
 
 from app.core.gemini import check_model_health

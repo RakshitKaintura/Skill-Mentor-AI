@@ -5,8 +5,9 @@ Notification Service — extended with:
   - Optimal study time nudges based on historical lesson timestamps
 """
 import logging
-from datetime import datetime, timezone, timedelta
 from collections import Counter
+from datetime import datetime, timedelta, timezone
+
 from app.core.database import get_supabase
 
 logger = logging.getLogger(__name__)

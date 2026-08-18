@@ -5,20 +5,28 @@ Uses ReportLab with a clean light theme for maximum readability.
 import io
 import logging
 from datetime import datetime
-from typing import Dict, Any, List, cast
+from typing import Any, cast
 
+from reportlab.lib.colors import HexColor  # type: ignore[import-untyped]
+from reportlab.lib.enums import TA_CENTER  # type: ignore[import-untyped]
 from reportlab.lib.pagesizes import A4  # type: ignore[import-untyped]
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # type: ignore[import-untyped]
-from reportlab.lib.colors import HexColor, black, white  # type: ignore[import-untyped]
+from reportlab.lib.styles import (  # type: ignore[import-untyped]
+    ParagraphStyle,
+    getSampleStyleSheet,
+)
 from reportlab.lib.units import cm  # type: ignore[import-untyped]
-from reportlab.lib.enums import TA_CENTER, TA_LEFT  # type: ignore[import-untyped]
 from reportlab.platypus import (  # type: ignore[import-untyped]
-    SimpleDocTemplate, Paragraph, Spacer,
-    Table, TableStyle, HRFlowable, KeepTogether,
+    HRFlowable,
+    KeepTogether,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
 
-from app.core.database import get_supabase
 from app.core.config import get_settings
+from app.core.database import get_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +186,7 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
         raise FileNotFoundError(f"Lesson {lesson_id} not found.")
     
     lesson = response.data
-    lesson: Dict[str, Any] = cast(Dict[str, Any], lesson)
+    lesson: dict[str, Any] = cast(dict[str, Any], lesson)
     styles = _get_styles()
     buffer = io.BytesIO()
     
@@ -188,7 +196,7 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
         topMargin=2*cm, bottomMargin=2*cm,
     )
     
-    elements: List[Any] = []
+    elements: list[Any] = []
     elements.append(Paragraph("SKILLMENTOR AI • LESSON NOTES", styles["Brand"]))
     elements.append(Paragraph(_sanitize_xml(lesson.get("topic", "Unit Study")), styles["H1"]))
     elements.append(Paragraph(f"Skill: {lesson.get('skill')} | Generated: {datetime.now().strftime('%Y-%m-%d')}", styles["Meta"]))
@@ -202,7 +210,7 @@ async def generate_lesson_pdf(lesson_id: str, user_id: str) -> str:
         stype = step.get("type", "intro")
         theme = THEME_MAP.get(stype, {"color": C_TEXT_B, "icon": stype.upper()})
         
-        step_group: List[Any] = []
+        step_group: list[Any] = []
         type_label = f"<font color='{theme['color']}'>{theme['icon']}</font>"
         step_group.append(Paragraph(type_label, styles["Meta"]))
         step_group.append(Paragraph(_sanitize_xml(step.get("title", "")), styles["Brand"]))
@@ -254,7 +262,7 @@ async def generate_report_pdf(
         topMargin=2*cm, bottomMargin=2*cm,
     )
 
-    elements: List[Any] = []
+    elements: list[Any] = []
     elements.append(Paragraph("SKILLMENTOR AI • WEEKLY PROGRESS", styles["Brand"]))
     elements.append(Paragraph(f"Week {week_number} Report Card", styles["H1"]))
     elements.append(Paragraph(f"Skill Mastery: {skill} | {datetime.now().strftime('%B %d, %Y')}", styles["Meta"]))

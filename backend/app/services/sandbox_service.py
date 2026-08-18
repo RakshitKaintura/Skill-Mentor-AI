@@ -51,6 +51,6 @@ class SandboxService:
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code, detail=f"Sandbox API Error: {e.response.text}")
         except httpx.RequestError as e:
-            raise HTTPException(status_code=503, detail=f"Failed to connect to sandbox provider: {str(e)}")
+            raise HTTPException(status_code=503, detail=f"Failed to connect to sandbox provider: {e!s}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

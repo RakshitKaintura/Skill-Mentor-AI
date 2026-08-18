@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.core.auth import get_current_user
 from app.services.sandbox_service import SandboxService
 
 router = APIRouter()
@@ -22,8 +23,10 @@ def get_sandbox_service() -> SandboxService:
 @router.post("/execute", response_model=ExecuteResponse)
 async def execute_code(
     req: ExecuteRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: SandboxService = Depends(get_sandbox_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Executes code in a secure sandbox using the Piston public API.
     Used for interactive browser code evaluation.

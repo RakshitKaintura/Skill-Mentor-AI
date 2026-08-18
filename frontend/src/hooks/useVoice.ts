@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export type VoiceState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'error'
 
@@ -16,6 +17,7 @@ export interface UseVoiceOptions {
   skill:          string
   level?:         string
   lessonContext?: string
+  socratic?:      boolean
   onTranscript?:  (text: string, role: 'user' | 'assistant') => void
 }
 
@@ -27,6 +29,9 @@ export function useVoice(options: UseVoiceOptions) {
   const [isPaused, setIsPaused]     = useState(false)
   const [durationSeconds, setDurationSeconds] = useState(0)
   const [activeSpeech, setActiveSpeech]       = useState<{ id: string, charIndex: number } | null>(null)
+  const [activeVisual, setActiveVisual]       = useState<string | null>(null)
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null)
 
   const wsRef         = useRef<WebSocket | null>(null)
   const mediaRecorder = useRef<MediaRecorder | null>(null)
@@ -80,6 +85,14 @@ export function useVoice(options: UseVoiceOptions) {
   }, [])
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const updateVoices = () => setAvailableVoices(window.speechSynthesis.getVoices())
+      updateVoices()
+      window.speechSynthesis.onvoiceschanged = updateVoices
+    }
+  }, [])
+
+  useEffect(() => {
     isPausedRef.current = isPaused
   }, [isPaused])
 
@@ -87,9 +100,21 @@ export function useVoice(options: UseVoiceOptions) {
     if (isMuted) return
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    const preferredVoice = pickPreferredFemaleVoice()
-    if (preferredVoice) utterance.voice = preferredVoice
+    // Strip markdown formatting symbols so the TTS doesn't read "asterisk asterisk"
+    const cleanText = text.replace(/[*_#`~>]/g, '').trim()
+    if (!cleanText) return
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    
+    let voiceToUse = null
+    if (selectedVoiceURI) {
+      voiceToUse = availableVoices.find(v => v.voiceURI === selectedVoiceURI)
+    }
+    if (!voiceToUse) {
+      voiceToUse = pickPreferredFemaleVoice()
+    }
+    
+    if (voiceToUse) utterance.voice = voiceToUse
     utterance.rate = 1
     utterance.pitch = 1
 
@@ -143,7 +168,12 @@ export function useVoice(options: UseVoiceOptions) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       streamRef.current = stream
 
-      const wsUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('http', 'ws')}/api/voice/ws?topic=${encodeURIComponent(options.topic)}&skill=${encodeURIComponent(options.skill)}&level=${encodeURIComponent(options.level ?? 'beginner')}`
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const tokenQuery = session?.access_token ? `&token=${session.access_token}` : ''
+
+      const socraticQuery = options.socratic ? `&socratic=true` : ''
+      const wsUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('http', 'ws')}/api/voice/ws?topic=${encodeURIComponent(options.topic)}&skill=${encodeURIComponent(options.skill)}&level=${encodeURIComponent(options.level ?? 'beginner')}${tokenQuery}${socraticQuery}`
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
       audioCtx.current = new AudioContext()
@@ -183,6 +213,7 @@ export function useVoice(options: UseVoiceOptions) {
             }
             break
           }
+          case 'transcript_visual': setActiveVisual(msg.content); break
           case 'audio': {
             hasServerAudioRef.current = true
             setState('speaking')
@@ -229,6 +260,7 @@ export function useVoice(options: UseVoiceOptions) {
     setIsPaused(false)
     setDurationSeconds(0)
     setActiveSpeech(null)
+    setActiveVisual(null)
     setState('idle')
   }, [])
 
@@ -245,9 +277,9 @@ export function useVoice(options: UseVoiceOptions) {
   const sendText = useCallback((text: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'text', content: text }))
-      addMessage(text, 'user')
+      // The backend echoes this as 'transcript_user', so we don't add it locally to prevent duplicates
     }
-  }, [addMessage])
+  }, [])
 
   const pause = useCallback(() => {
     if (wsRef.current?.readyState !== WebSocket.OPEN || isPausedRef.current) return
@@ -281,12 +313,16 @@ export function useVoice(options: UseVoiceOptions) {
     isPaused,
     durationSeconds,
     activeSpeech,
+    activeVisual,
+    availableVoices,
+    selectedVoiceURI,
+    setSelectedVoiceURI,
     start,
     stop,
-    toggleMute,
-    sendText,
     pause,
     resume,
+    toggleMute,
+    sendText,
   }
 }
 

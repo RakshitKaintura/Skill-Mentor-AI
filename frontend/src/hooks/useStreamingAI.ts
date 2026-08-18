@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -102,7 +103,18 @@ export function useStreamingAI(options: UseStreamingAIOptions): UseStreamingAIRe
 
     ;(async () => {
       try {
-        const response = await fetch(url, { signal: controller.signal })
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        const headers: HeadersInit = {}
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+
+        const response = await fetch(url, { 
+          signal: controller.signal,
+          headers
+        })
 
         if (!response.ok || !response.body) {
           setError(`Stream failed: HTTP ${response.status}`)

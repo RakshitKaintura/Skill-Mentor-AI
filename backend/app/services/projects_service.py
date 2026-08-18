@@ -1,11 +1,11 @@
 import logging
-from typing import Optional, List, Dict, Any
+
 from supabase import Client
 
 from app.agents.project_mentor_agent import (
-    assign_project, 
-    review_project, 
-    get_mentor_guidance
+    assign_project,
+    get_mentor_guidance,
+    review_project,
 )
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class ProjectsService:
             level=level
         )
 
-    async def review_project(self, project_id: str, user_id: str, submitted_code: str, github_url: Optional[str]) -> dict:
+    async def review_project(self, project_id: str, user_id: str, submitted_code: str, github_url: str | None) -> dict:
         return await review_project(
             project_id=project_id, 
             user_id=user_id, 
@@ -30,19 +30,20 @@ class ProjectsService:
             github_url=github_url
         )
 
-    async def get_hint(self, project_id: str, question: str) -> dict:
+    async def get_hint(self, project_id: str, question: str, user_id: str) -> dict:
         return await get_mentor_guidance(
             project_id=project_id, 
-            question=question
+            question=question,
+            user_id=user_id
         )
 
-    def get_user_projects(self, user_id: str, roadmap_id: Optional[str], limit: int) -> list:
+    def get_user_projects(self, user_id: str, roadmap_id: str | None, limit: int) -> list:
         query = self.supabase.table("projects").select("*").eq("user_id", user_id)
         if roadmap_id:
             query = query.eq("roadmap_id", roadmap_id)
         result = query.order("created_at", desc=True).limit(limit).execute()
         return result.data or []
 
-    def get_project(self, project_id: str) -> Optional[dict]:
-        result = self.supabase.table("projects").select("*").eq("id", project_id).single().execute()
+    def get_project(self, project_id: str, user_id: str) -> dict | None:
+        result = self.supabase.table("projects").select("*").eq("id", project_id).eq("user_id", user_id).single().execute()
         return result.data if result.data else None

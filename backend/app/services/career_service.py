@@ -1,14 +1,15 @@
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from supabase import Client
 
 from app.agents.career_prep_agent import (
-    generate_mock_interview, 
-    review_resume_ai, 
     check_job_readiness_logic,
-    evaluate_interview_answer,
     complete_interview_session,
+    evaluate_interview_answer,
+    generate_mock_interview,
+    review_resume_ai,
 )
 from app.services.certificate_service import generate_skill_certificate
 
@@ -18,7 +19,7 @@ class CareerService:
     def __init__(self, supabase: Client):
         self.supabase = supabase
 
-    async def start_interview(self, user_id: str, roadmap_id: Optional[str], skill: str, level: str, interview_type: str, company_target: Optional[str], num_questions: int) -> dict:
+    async def start_interview(self, user_id: str, roadmap_id: str | None, skill: str, level: str, interview_type: str, company_target: str | None, num_questions: int) -> dict:
         result = await generate_mock_interview(
             user_id=user_id,
             roadmap_id=roadmap_id,
@@ -54,7 +55,7 @@ class CareerService:
         }
         return interview_payload
 
-    async def evaluate_answer(self, question_text: str, answer: str, key_points: List[str], skill: str, level: str, question_id: int) -> dict:
+    async def evaluate_answer(self, question_text: str, answer: str, key_points: list[str], skill: str, level: str, question_id: int) -> dict:
         return await evaluate_interview_answer(
             question_text=question_text,
             answer=answer,
@@ -64,7 +65,7 @@ class CareerService:
             question_id=question_id,
         )
 
-    async def complete_interview(self, session_id: str, user_id: str, answers: List[Dict[str, Any]], evaluations: List[Dict[str, Any]]) -> dict:
+    async def complete_interview(self, session_id: str, user_id: str, answers: list[dict[str, Any]], evaluations: list[dict[str, Any]]) -> dict:
         return await complete_interview_session(
             session_id=session_id,
             user_id=user_id,
@@ -108,7 +109,7 @@ class CareerService:
             full_name=full_name
         )
 
-    def verify_certificate(self, verify_code: str) -> Optional[dict]:
+    def verify_certificate(self, verify_code: str) -> dict | None:
         result = self.supabase.table("certificates").select("*").eq("verify_code", verify_code).single().execute()
         return result.data if result.data else None
 

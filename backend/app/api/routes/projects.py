@@ -1,9 +1,10 @@
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from supabase import Client
 
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
 from app.services.projects_service import ProjectsService
 
@@ -22,7 +23,7 @@ class ReviewRequest(BaseModel):
     project_id: str
     user_id: str
     submitted_code: str
-    github_url: Optional[str] = None
+    github_url: str | None = None
 
 class HintRequest(BaseModel):
     project_id: str
@@ -36,8 +37,10 @@ def get_projects_service(supabase: Client = Depends(get_supabase)) -> ProjectsSe
 @router.post("/assign")
 async def assign_project_endpoint(
     req: AssignRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: ProjectsService = Depends(get_projects_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Triggers Agent 7 to generate a comprehensive, level-appropriate 
     technical project specification for the student.
@@ -57,8 +60,10 @@ async def assign_project_endpoint(
 @router.post("/review")
 async def review_project_endpoint(
     req: ReviewRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: ProjectsService = Depends(get_projects_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Performs a senior-level AI code review of the submitted project.
     Calculates performance scores and awards XP based on code quality.
@@ -78,8 +83,10 @@ async def review_project_endpoint(
 @router.post("/hint")
 async def project_hint_endpoint(
     req: HintRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: ProjectsService = Depends(get_projects_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Provides architectural guidance or a 'Mentor Secret' without 
     spoiling the solution.
@@ -87,7 +94,8 @@ async def project_hint_endpoint(
     try:
         hint = await service.get_hint(
             project_id=req.project_id, 
-            question=req.question
+            question=req.question,
+            user_id=auth_user_id
         )
         return {"success": True, "hint": hint}
     except Exception as e:
@@ -97,10 +105,12 @@ async def project_hint_endpoint(
 @router.get("/user/{user_id}")
 async def get_user_projects(
     user_id: str, 
-    roadmap_id: Optional[str] = None,
+    roadmap_id: str | None = None,
     limit: int = Query(20, le=50),
+    auth_user_id: str = Depends(get_current_user),
     service: ProjectsService = Depends(get_projects_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Retrieves the history of all assigned and submitted projects for a user."""
     projects = service.get_user_projects(user_id, roadmap_id, limit)
     return {"projects": projects}
@@ -108,10 +118,11 @@ async def get_user_projects(
 @router.get("/{project_id}")
 async def get_project(
     project_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: ProjectsService = Depends(get_projects_service)
 ):
     """Fetches full details of a specific project record."""
-    project = service.get_project(project_id)
+    project = service.get_project(project_id, auth_user_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
     return project

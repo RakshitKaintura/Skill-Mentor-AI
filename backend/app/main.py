@@ -1,27 +1,38 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
+# 1. Comprehensive Agent & Service Route Imports
+from app.api.routes import (
+    admin,
+    analytics,
+    books,
+    career,
+    daily,
+    health,
+    lessons,
+    notes,
+    playground,
+    progress,
+    projects,
+    quiz,
+    roadmap,
+    sandbox,
+    stream,
+    voice,
+)
 from app.core.config import get_settings
 from app.core.gemini import get_gemini_client
 from app.core.logging_config import setup_logging
 from app.core.middleware import CorrelationIDMiddleware, GlobalExceptionHandler
 
-# 1. Comprehensive Agent & Service Route Imports
-from app.api.routes import (
-    health, roadmap, books, lessons,
-    voice, quiz, playground, progress,
-    daily,
-    projects, career,
-    analytics, admin,
-    stream, notes, sandbox,
-)
 
 # 2. Lifespan Management: Pre-warms AI resources
 @asynccontextmanager

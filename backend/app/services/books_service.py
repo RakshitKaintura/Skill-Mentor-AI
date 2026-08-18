@@ -1,10 +1,11 @@
 import uuid
-from typing import Optional, Dict, Any
+
 from fastapi import BackgroundTasks, HTTPException, status
 from supabase import Client
 
 from app.models.schemas import ProcessingStatus
 from app.services.rag_service import process_uploaded_book
+
 
 class BooksService:
     def __init__(self, supabase: Client):
@@ -34,8 +35,8 @@ class BooksService:
 
         return book_id
 
-    def get_status(self, book_id: str) -> dict:
-        result = self.supabase.table("user_books").select("*").eq("id", book_id).single().execute()
+    def get_status(self, book_id: str, user_id: str) -> dict:
+        result = self.supabase.table("user_books").select("*").eq("id", book_id).eq("user_id", user_id).single().execute()
         if not result.data:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Book record not found.")
         return result.data

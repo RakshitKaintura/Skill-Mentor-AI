@@ -4,7 +4,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from app.main import app
 
 @pytest.mark.anyio
-@patch("app.api.routes.sandbox.httpx.AsyncClient.post")
+@patch("app.services.sandbox_service.httpx.AsyncClient.post")
 async def test_sandbox_execute_success(mock_post):
     """Test successful code execution via sandbox endpoint."""
     
@@ -20,14 +20,15 @@ async def test_sandbox_execute_success(mock_post):
     mock_post.return_value = mock_response
 
     from app.api.routes.sandbox import execute_code, ExecuteRequest
-    
+    from app.services.sandbox_service import SandboxService
+
     req = ExecuteRequest(
         language="python",
         code="print('hello world')",
         stdin=""
     )
-    
-    response = await execute_code(req)
+
+    response = await execute_code(req, auth_user_id="test_user", service=SandboxService())
         
     assert response.stdout == "hello world\n"
     assert response.exit_code == 0

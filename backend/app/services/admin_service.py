@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+
 from fastapi import HTTPException
 from supabase import Client
 
@@ -14,7 +14,7 @@ class AdminService:
         self.analytics = AnalyticsService(supabase)
         self.admin_key = get_settings().admin_api_key
 
-    def verify_admin(self, key: Optional[str]) -> None:
+    def verify_admin(self, key: str | None) -> None:
         if key != self.admin_key:
             raise HTTPException(401, "Unauthorized — invalid admin key")
 

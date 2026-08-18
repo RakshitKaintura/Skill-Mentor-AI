@@ -5,18 +5,16 @@ Uses a landscape orientation with the 2026 SkillMentor AI brand identity.
 import io
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 from xml.sax.saxutils import escape
 
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.colors import HexColor
-from reportlab.lib.units import mm
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
 from app.core.database import get_supabase
-from app.services.notes_service import _resolve_storage_bucket, _build_download_url
+from app.services.notes_service import _build_download_url, _resolve_storage_bucket
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +104,7 @@ async def generate_skill_certificate(
     skill: str,
     level: str,
     full_name: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generates a branded, landscape-oriented certificate.
     Persists to Supabase Storage and updates the verification record.

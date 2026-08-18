@@ -1,5 +1,5 @@
+from collections.abc import AsyncGenerator
 from functools import lru_cache
-from typing import AsyncGenerator
 
 from google import genai
 from google.genai import types

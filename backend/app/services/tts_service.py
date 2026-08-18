@@ -6,9 +6,10 @@ Generates structured, time-stamped segments for synchronized audio-visual learni
 import json
 import logging
 import re
-from typing import List, Dict, Any
+from typing import Any
 
 from google.genai import types
+
 from app.core.gemini import get_gemini_client  # Standardized Client pattern
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def prepare_tts_text(text: str) -> str:
     
     return text.strip()
 
-async def generate_tts_segments(lesson_text: str, topic: str) -> List[Dict[str, Any]]:
+async def generate_tts_segments(lesson_text: str, topic: str) -> list[dict[str, Any]]:
     """
     Deconstructs a lesson into speakable segments with estimated timing.
     Enables synchronized 'Karaoke-style' highlighting on the frontend.
@@ -97,7 +98,7 @@ async def generate_tts_segments(lesson_text: str, topic: str) -> List[Dict[str, 
             "estimated_secs": 5
         }]
 
-def get_tts_voice_config(skill: str) -> Dict[str, Any]:
+def get_tts_voice_config(skill: str) -> dict[str, Any]:
     """
     Returns optimized voice parameters for the Web Speech API.
     Configures tone and speed based on the technical complexity of the skill.

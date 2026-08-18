@@ -89,11 +89,10 @@ export function AIOrb({ state, onStart, onStop, durationSeconds = 0 }: AIOrbProp
           background: 'var(--color-app-surface)',
           border: `2px solid ${isActive ? colors[0] : 'var(--color-app-border)'}`,
         }}
-        // Base container scale pulsing when speaking
         animate={{
-          scale: isSpeaking ? [1, 1.06, 0.97, 1.04, 1] : 1
+          scale: isSpeaking ? [1, 1.03, 0.97, 1.05, 0.98, 1.04, 0.99, 1] : 1
         }}
-        transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0, ease: 'easeInOut' }}
+        transition={{ duration: 0.8, repeat: isSpeaking ? Infinity : 0, ease: 'easeInOut' }}
       >
         <Image 
           src="/cartoon-young-woman-teacher-white-isolated-background-back-school-ai-generation_894218-901.avif"

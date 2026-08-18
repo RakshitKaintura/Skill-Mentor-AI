@@ -1,14 +1,14 @@
 import json
 from datetime import date
+
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.config import get_settings
-from app.core.database import get_supabase
 from app.core.cache import cache_manager
+from app.core.database import get_supabase
 from app.core.llm_router import llm_router
 from app.models.schemas import (
-    GenerateRoadmapRequest,
     GeneratedRoadmap,
+    GenerateRoadmapRequest,
     LearnerGoal,
 )
 
@@ -145,7 +145,7 @@ async def generate_roadmap(req: GenerateRoadmapRequest) -> dict:
         normalized = _normalize_roadmap_payload(roadmap_json, int(req.hours_per_day))
         roadmap = GeneratedRoadmap.model_validate(normalized)
     except Exception as e:
-        raise ValueError(f"Gemini roadmap JSON parsing failed: {str(e)}")
+        raise ValueError(f"Gemini roadmap JSON parsing failed: {e!s}")
 
     if not roadmap.phases:
         raise ValueError("AI failed to generate roadmap phases.")

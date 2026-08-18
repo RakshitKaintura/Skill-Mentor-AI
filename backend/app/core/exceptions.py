@@ -1,6 +1,6 @@
 from __future__ import annotations
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 
 # ── Structured error models ───────────────────────────────────
 

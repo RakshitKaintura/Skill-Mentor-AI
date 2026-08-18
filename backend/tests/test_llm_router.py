@@ -95,10 +95,10 @@ async def test_router_raises_when_all_keys_fail(mock_acompletion):
     router = _make_router_with_mock_keys()
     
     error = Exception("503 Service Unavailable")
-    # 2 gemini keys + 2 fallback models = 4 attempts total
-    mock_acompletion.side_effect = [error, error, error, error]
+    # 2 gemini keys = 2 attempts total
+    mock_acompletion.side_effect = [error, error]
     
     with pytest.raises(AllProvidersFailedError):
         await router.generate("prompt", "sys")
         
-    assert mock_acompletion.call_count == 4
+    assert mock_acompletion.call_count == 2

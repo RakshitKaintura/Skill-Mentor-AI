@@ -1,15 +1,16 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from supabase import Client
 
-from app.models.schemas import (
-    GenerateLessonRequest, 
-    GenerateLessonResponse,
-    LessonCompleteRequest, 
-    DoubtRequest, 
-    DoubtResponse,
-)
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
+from app.models.schemas import (
+    DoubtRequest,
+    DoubtResponse,
+    GenerateLessonRequest,
+    GenerateLessonResponse,
+    LessonCompleteRequest,
+)
 from app.services.lessons_service import LessonsService
 
 router = APIRouter(prefix="/lesson", tags=["Lessons"])
@@ -20,8 +21,10 @@ def get_lessons_service(supabase: Client = Depends(get_supabase)) -> LessonsServ
 @router.post("/generate", response_model=GenerateLessonResponse)
 async def generate_lesson_endpoint(
     req: GenerateLessonRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Triggers the RAG + GenAI pipeline to create a structured 6-step lesson.
     Optimized for Gemini 3.1 Flash Lite Preview.
@@ -34,13 +37,15 @@ async def generate_lesson_endpoint(
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected generation error: {e!s}")
 
 @router.post("/doubt", response_model=DoubtResponse)
 async def ask_doubt(
     req: DoubtRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     24/7 Socratic Doubt Solver. 
     Provides tailored explanations and code using the student's uploaded context.
@@ -48,13 +53,15 @@ async def ask_doubt(
     try:
         return await service.ask_doubt(req)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Doubt resolution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Doubt resolution failed: {e!s}")
 
 @router.delete("/cleanup/{user_id}")
 async def cleanup_user_lessons(
     user_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Deletes all previous lessons for a user when a new browser session is started.
     This ensures that old generated lessons are not stored permanently.
@@ -63,20 +70,23 @@ async def cleanup_user_lessons(
         service.cleanup_user_lessons(user_id)
         return {"message": "Lessons cleaned up for new session", "status": "success"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to cleanup lessons: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup lessons: {e!s}")
 
 @router.get("/user/{user_id}")
 async def list_lessons(
     user_id: str, 
     limit: int = 30,
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Retrieves a paginated list of generated lessons for a specific user profile."""
     return service.list_lessons(user_id, limit)
 
 @router.get("/{lesson_id}")
 async def get_lesson(
     lesson_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
     """Fetches the full JSON structure of a lesson, including all pedagogical steps."""
@@ -89,20 +99,24 @@ async def get_lesson(
 async def mark_complete(
     lesson_id: str, 
     req: LessonCompleteRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Records lesson completion, awards XP, and updates the user's learning streak."""
     try:
         return await service.mark_complete(lesson_id, req.user_id, req.time_spent_minutes)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Progress update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Progress update failed: {e!s}")
 
 @router.post("/{lesson_id}/notes")
 async def generate_notes(
     lesson_id: str, 
     user_id: str = Query(...),
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Generates high-fidelity PDF study notes.
     Persists the asset to cloud storage and returns the secure public URL.
@@ -115,7 +129,7 @@ async def generate_notes(
             "message": "Your branded study notes are ready for download! 📄"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF engine error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PDF engine error: {e!s}")
 
 @router.get("/stream/{roadmap_id}")
 async def stream_lesson_intro(
@@ -124,8 +138,10 @@ async def stream_lesson_intro(
     user_id: str = Query(...),
     skill: str = Query(...),
     level: str = Query("beginner"),
+    auth_user_id: str = Depends(get_current_user),
     service: LessonsService = Depends(get_lessons_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """
     Streams a real-time lesson introduction via Server-Sent Events (SSE).
     Uses the latest Gemini streaming capabilities for a 'live-typed' feel.

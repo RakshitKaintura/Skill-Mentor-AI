@@ -1,8 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
-from enum import Enum
 from datetime import datetime, timezone
+from enum import Enum
 
+from pydantic import BaseModel, Field
 
 
 # ── Enums ──────────────────────────────────────────────────
@@ -61,6 +60,32 @@ class GenerateRoadmapResponse(BaseModel):
     phases_count: int
 
 
+class ActiveRoadmapResponse(BaseModel):
+    id:                      str
+    user_id:                 str
+    skill:                   str
+    level:                   str
+    goal:                    str
+    hours_per_day:           float
+    total_weeks:             int | None = 12
+    total_duration:          int | None = None
+    current_phase:           str
+    current_topic:           str
+    current_week:            int
+    phases:                  list[RoadmapPhase]
+    daily_schedule:          str
+    final_project:           str
+    job_readiness_checklist: list[str]
+    created_at:              str
+
+class AdvanceRoadmapResponse(BaseModel):
+    message:       str
+    completed:     bool | None = False
+    current_week:  int | None = None
+    current_topic: str | None = None
+    current_phase: str | None = None
+
+
 # ── Book models ────────────────────────────────────────────
 class BookUploadResponse(BaseModel):
     book_id:   str
@@ -73,9 +98,9 @@ class BookStatusResponse(BaseModel):
     book_id:         str
     file_name:       str
     status:          ProcessingStatus
-    total_chunks:    Optional[int]       = None
-    topics_detected: Optional[list[str]] = None
-    error_message:   Optional[str]       = None
+    total_chunks:    int | None       = None
+    topics_detected: list[str] | None = None
+    error_message:   str | None       = None
 
 
 # ── Lesson models ──────────────────────────────────────────
@@ -92,8 +117,8 @@ class LessonStep(BaseModel):
     type:         LessonStepType
     title:        str
     content:      str
-    code_snippet: Optional[str] = None
-    language:     Optional[str] = None
+    code_snippet: str | None = None
+    language:     str | None = None
 
 
 class GeneratedLesson(BaseModel):
@@ -133,8 +158,8 @@ class LessonCompleteRequest(BaseModel):
 # ── Doubt models ───────────────────────────────────────────
 class DoubtRequest(BaseModel):
     user_id:    str
-    lesson_id:  Optional[str] = None
-    session_id: Optional[str] = None   # Groups multiple turns into one conversation
+    lesson_id:  str | None = None
+    session_id: str | None = None   # Groups multiple turns into one conversation
     topic:      str
     skill:      str
     question:   str
@@ -143,7 +168,7 @@ class DoubtRequest(BaseModel):
 class DoubtResponse(BaseModel):
     answer:       str
     analogy:      str
-    code_example: Optional[str] = None
+    code_example: str | None = None
 
 
 # ── Health ─────────────────────────────────────────────────

@@ -1,9 +1,11 @@
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from supabase import Client
 
+from app.core.auth import get_current_user
 from app.core.database import get_supabase
 from app.services.career_service import CareerService
 
@@ -14,11 +16,11 @@ router = APIRouter(prefix="/career", tags=["Career Acceleration"])
 
 class InterviewStartRequest(BaseModel):
     user_id: str
-    roadmap_id: Optional[str] = None
+    roadmap_id: str | None = None
     skill: str
     level: str
     interview_type: str = "technical"
-    company_target: Optional[str] = None
+    company_target: str | None = None
     num_questions: int = 8
 
 class InterviewAnswerEvalRequest(BaseModel):
@@ -26,15 +28,15 @@ class InterviewAnswerEvalRequest(BaseModel):
     question_id: int
     question_text: str
     answer: str
-    key_points: List[str]
+    key_points: list[str]
     skill: str
     level: str
 
 class InterviewCompleteRequest(BaseModel):
     session_id: str
     user_id: str
-    answers: List[Dict[str, Any]]
-    evaluations: List[Dict[str, Any]]
+    answers: list[dict[str, Any]]
+    evaluations: list[dict[str, Any]]
 
 class ResumeReviewRequest(BaseModel):
     user_id: str
@@ -58,8 +60,10 @@ def get_career_service(supabase: Client = Depends(get_supabase)) -> CareerServic
 @router.post("/interview/start")
 async def start_interview_endpoint(
     req: InterviewStartRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Generates an adaptive mock interview session based on user skill and history."""
     try:
         interview = await service.start_interview(
@@ -79,8 +83,10 @@ async def start_interview_endpoint(
 @router.post("/interview/evaluate-answer")
 async def evaluate_interview_answer_endpoint(
     req: InterviewAnswerEvalRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Evaluates a single interview answer in real-time."""
     try:
         evaluation = await service.evaluate_answer(
@@ -99,8 +105,10 @@ async def evaluate_interview_answer_endpoint(
 @router.post("/interview/complete")
 async def complete_interview_endpoint(
     req: InterviewCompleteRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Completes interview session, computes summary, and awards XP."""
     try:
         summary = await service.complete_interview(
@@ -117,8 +125,10 @@ async def complete_interview_endpoint(
 @router.post("/resume/review")
 async def resume_review_endpoint(
     req: ResumeReviewRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Performs an AI audit of a resume for ATS optimization and technical depth."""
     try:
         review = await service.review_resume(
@@ -137,8 +147,10 @@ async def resume_review_endpoint(
 async def get_job_readiness(
     user_id: str, 
     roadmap_id: str,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Calculates the weighted job-readiness score across all platform activities."""
     try:
         result = await service.get_job_readiness(user_id, roadmap_id)
@@ -150,8 +162,10 @@ async def get_job_readiness(
 @router.post("/certificate/generate")
 async def generate_cert_endpoint(
     req: CertificateRequest,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if getattr(req, 'user_id', None) and req.user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Generates a verified, branded PDF certificate for skill completion."""
     try:
         cert = await service.generate_certificate(
@@ -169,6 +183,7 @@ async def generate_cert_endpoint(
 @router.get("/certificate/verify/{verify_code}")
 async def verify_certificate(
     verify_code: str,
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
     """Public verification endpoint for recruiters to validate certificates."""
@@ -181,8 +196,10 @@ async def verify_certificate(
 async def get_interview_history(
     user_id: str, 
     limit: int = Query(10, le=50),
+    auth_user_id: str = Depends(get_current_user),
     service: CareerService = Depends(get_career_service)
 ):
+    if user_id != auth_user_id: raise HTTPException(status_code=403, detail="Not authorized")
     """Retrieves previous mock interview performance summaries."""
     history = service.get_interview_history(user_id, limit)
     return {"sessions": history}
